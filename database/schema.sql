@@ -5,7 +5,7 @@ CREATE TABLE usuarios (
   nome VARCHAR(255) NOT NULL,
   senha VARCHAR(255) NOT NULL,
   data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'ativo', -- ativo, inativo, banido
+  status VARCHAR(50) DEFAULT 'ativo',
   pontos INT DEFAULT 0,
   posicao INT,
   cravadas INT DEFAULT 0,
@@ -20,7 +20,7 @@ CREATE TABLE convites (
   usado_por INT REFERENCES usuarios(id),
   data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   data_uso TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'pendente' -- pendente, usado, expirado
+  status VARCHAR(50) DEFAULT 'pendente'
 );
 
 -- Criar tabela de jogos
@@ -29,10 +29,10 @@ CREATE TABLE jogos (
   time_a VARCHAR(100) NOT NULL,
   time_b VARCHAR(100) NOT NULL,
   data_jogo TIMESTAMP NOT NULL,
-  fase VARCHAR(50) NOT NULL, -- grupos, oitavas, quartas, semi, final, terceiro_lugar
+  fase VARCHAR(50) NOT NULL,
   placar_a INT,
   placar_b INT,
-  status VARCHAR(50) DEFAULT 'pendente', -- pendente, em_andamento, finalizado
+  status VARCHAR(50) DEFAULT 'pendente',
   bloqueio_palpites TIMESTAMP
 );
 
@@ -45,7 +45,7 @@ CREATE TABLE palpites (
   placar_b INT NOT NULL,
   data_palpite TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   pontos INT DEFAULT 0,
-  tipo_acerto VARCHAR(50), -- cravada, resultado, nenhum
+  tipo_acerto VARCHAR(50),
   UNIQUE(usuario_id, jogo_id)
 );
 
@@ -53,7 +53,7 @@ CREATE TABLE palpites (
 CREATE TABLE apostas_extras (
   id SERIAL PRIMARY KEY,
   usuario_id INT REFERENCES usuarios(id),
-  tipo VARCHAR(50) NOT NULL, -- campeao, vice, terceiro, artilheiro
+  tipo VARCHAR(50) NOT NULL,
   palpite VARCHAR(100) NOT NULL,
   data_aposta TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   acertou BOOLEAN DEFAULT FALSE,
@@ -69,7 +69,7 @@ CREATE TABLE participacoes (
   data_pagamento TIMESTAMP
 );
 
--- Criar tabela de ranking (atualizado em tempo real)
+-- Criar tabela de ranking
 CREATE TABLE ranking (
   id SERIAL PRIMARY KEY,
   usuario_id INT UNIQUE REFERENCES usuarios(id),
