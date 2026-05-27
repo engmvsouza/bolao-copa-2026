@@ -198,13 +198,7 @@ const FLAGS={
   'Curaçau':'🇨🇼','Suriname':'🇸🇷','Guiana':'🇬🇾',
   'Albânia':'🇦🇱','Eslovênia':'🇸🇮','Geórgia':'🇬🇪','Eslováquia':'🇸🇰','Hungria':'🇭🇺','Romênia':'🇷🇴',
   'Áustria':'🇦🇹','Croácia':'🇭🇷','República Tcheca':'🇨🇿','Grécia':'🇬🇷',
-  // Jogos teste
-  'LDU Quito':'🇪🇨','Always Ready':'🇧🇴','Lanús':'🇦🇷','Mirassol':'🇧🇷','Universitario':'🇵🇪',
-  'Tolima':'🇨🇴','Nacional':'🇺🇾','Coquimbo Unido':'🇨🇱','Flamengo':'🇧🇷','Cusco':'🇵🇪',
-  'Estudiantes':'🇦🇷','Ind. Medellín':'🇨🇴','Grêmio':'🇧🇷','Mvd City Torque':'🇺🇾',
-  'Palestino':'🇨🇱','Dep. Riestra':'🇦🇷','São Paulo':'🇧🇷','Boston River':'🇺🇾',
-  'Millonarios':'🇨🇴',"O'Higgins":'🇨🇱','Santos':'🇧🇷','Dep. Cuenca':'🇪🇨',
-  'San Lorenzo':'🇦🇷','Recoleta':'🇨🇱',
+
 };
 function flag(name){
   const f=FLAGS[name];
@@ -259,19 +253,7 @@ const SELECOES=[
 ];
 
 const GROUP_GAMES=[
-  // === JOGOS TESTE — LIBERTADORES E SUL-AMERICANA (26/05/2026) ===
-  {id:200,group:'LIB',home:'LDU Quito',away:'Always Ready',date:'2026-05-26',time:'19:00',city:'Quito'},
-  {id:201,group:'LIB',home:'Lanús',away:'Mirassol',date:'2026-05-26',time:'19:00',city:'Buenos Aires'},
-  {id:202,group:'LIB',home:'Universitario',away:'Tolima',date:'2026-05-26',time:'21:30',city:'Lima'},
-  {id:203,group:'LIB',home:'Nacional',away:'Coquimbo Unido',date:'2026-05-26',time:'21:30',city:'Montevidéu'},
-  {id:204,group:'LIB',home:'Flamengo',away:'Cusco',date:'2026-05-26',time:'21:30',city:'Rio de Janeiro'},
-  {id:205,group:'LIB',home:'Estudiantes',away:'Ind. Medellín',date:'2026-05-26',time:'21:30',city:'La Plata'},
-  {id:206,group:'SUL',home:'Grêmio',away:'Mvd City Torque',date:'2026-05-26',time:'19:00',city:'Porto Alegre'},
-  {id:207,group:'SUL',home:'Palestino',away:'Dep. Riestra',date:'2026-05-26',time:'19:00',city:'Santiago'},
-  {id:208,group:'SUL',home:'São Paulo',away:'Boston River',date:'2026-05-26',time:'19:00',city:'São Paulo'},
-  {id:209,group:'SUL',home:'Millonarios',away:"O'Higgins",date:'2026-05-26',time:'19:00',city:'Bogotá'},
-  {id:210,group:'SUL',home:'Santos',away:'Dep. Cuenca',date:'2026-05-26',time:'21:30',city:'Santos'},
-  {id:211,group:'SUL',home:'San Lorenzo',away:'Recoleta',date:'2026-05-26',time:'21:30',city:'Buenos Aires'},
+
   // === FIM JOGOS TESTE ===
   {id:1,group:'A',home:'México',away:'África do Sul',date:'2026-06-11',time:'16:00',city:'Cidade do México'},
   {id:2,group:'A',home:'Coreia do Sul',away:'Rep. Tcheca',date:'2026-06-11',time:'23:00',city:'Guadalajara'},
@@ -348,9 +330,7 @@ const GROUP_GAMES=[
 ];
 
 const KNOCKOUT_TEMPLATE=[
-  {phase:'TEST',label:'🧪 Jogos Teste (26/Mai)',count:0},
-  {phase:'LIB',label:'🏆 Libertadores 2026',count:0},
-  {phase:'SUL',label:'🏆 Copa Sul-Americana 2026',count:0},
+
   {phase:'R16',label:'Dezesseis Avos de Final',count:16},
   {phase:'QF',label:'Oitavas de Final',count:8},
   {phase:'SF',label:'Quartas de Final',count:4},
@@ -359,7 +339,7 @@ const KNOCKOUT_TEMPLATE=[
   {phase:'F',label:'Final',count:1},
 ];
 
-const GROUPS=['LIB','SUL','A','B','C','D','E','F','G','H','I','J','K','L'];
+const GROUPS=['A','B','C','D','E','F','G','H','I','J','K','L'];
 
 function calcPoints(pick,result,cfg,isKnockout){
   if(!result||result.home===''||result.home===undefined||result.away===''||result.away===undefined)return null;
@@ -2137,7 +2117,7 @@ function AdminView({state,setState,onSave,saving}){
               const now=new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
               const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])];
               let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Backup Bolão do Batata — ${dt}</title>
+<title>Backup Bolão do Vini — ${dt}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#0a0e1a;color:#e8ecf4;padding:1.5rem}
@@ -2159,7 +2139,7 @@ tr:nth-child(even) td{background:#0d1220}
 .badge-red{background:#ff3d5722;color:#ff3d57;border:1px solid #ff3d5744}
 .section{background:#131929;border:1px solid #2a3560;border-radius:10px;padding:1rem;margin-bottom:1rem}
 </style></head><body>
-<h1>⚽ Bolão do Batata — Backup</h1>
+<h1>⚽ Bolão do Vini — Backup</h1>
 <div class="meta">Gerado em: ${now} &nbsp;|&nbsp; ${state.players.length} participantes &nbsp;|&nbsp; Pote: R$ ${pot}</div>`;
 
               // RANKING
@@ -2438,7 +2418,7 @@ function LoginView({state,onLoginPlayer,onLoginAdmin}){
   return(
     <div style={{minHeight:'80vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
       <div className="login-card">
-        <div className="login-logo">Bolão do Batata</div>
+        <div className="login-logo">Bolão do Vini</div>
         <div className="login-sub">Copa do Mundo 2026 ⚽</div>
         <div className="tab" style={{marginBottom:'1.25rem'}}>
           <button className={`tab-btn ${mode==='player'?'active':''}`} style={{flex:1}} onClick={()=>{setMode('player');setErr('')}}>Jogador</button>
@@ -2519,7 +2499,7 @@ function App(){
   if(loading)return(
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16}}>
       <div className="spinner" style={{width:36,height:36,borderWidth:3}}/>
-      <p style={{color:'var(--muted)',fontSize:13}}>Carregando Bolão do Batata...</p>
+      <p style={{color:'var(--muted)',fontSize:13}}>Carregando Bolão do Vini...</p>
     </div>
   );
 
@@ -2549,7 +2529,7 @@ function App(){
     <div className="app">
       <header className="header">
         <div className="header-inner">
-          <div className="logo" onClick={()=>setView('ranking')}>Bolão do Batata</div>
+          <div className="logo" onClick={()=>setView('ranking')}>Bolão do Vini</div>
           <nav className="nav">
             {navItems.map(n=>(
               <button key={n.id} className={`nav-btn ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>{n.label}</button>
