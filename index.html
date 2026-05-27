@@ -164,6 +164,17 @@ const ADMIN_USER   = 'admin';
 const ADMIN_PASS   = 'H7taj2kd*';
 // ═══════════════════════════════════
 
+// ── ENCODING UTF-8 SEGURO ──────────────────────────────
+// CORREÇÃO: btoa/atob nativos não suportam caracteres acentuados.
+// Estas funções garantem que "França", "Mbappé", etc. sejam salvos corretamente.
+function toBase64(str){
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function fromBase64(b64){
+  return decodeURIComponent(escape(atob(b64)));
+}
+// ──────────────────────────────────────────────────────
+  
 // Cores brasileiras: verde e amarelo
 const COLORS=['#ffd700','#00d400','#1e88e5','#ff3d57','#ab47bc','#ff7043','#26c6da','#66bb6a','#ef5350','#42a5f5'];
 
@@ -172,31 +183,2396 @@ const COLORS=['#ffd700','#00d400','#1e88e5','#ff3d57','#ab47bc','#ff7043','#26c6
 
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
-function App(){
-  return (
-    <div className="app">
-      <div className="header">
-        <div className="header-inner">
-          <div className="logo">Bolão do Vini</div>
+const FLAGS={
+  'México':'🇲🇽','África do Sul':'🇿🇦','Brasil':'🇧🇷','Marrocos':'🇲🇦','Haiti':'🇭🇹','Escócia':'🏴',
+  'Coreia do Sul':'🇰🇷','Rep. Tcheca':'🇨🇿','Canadá':'🇨🇦','Bósnia e Herz.':'🇧🇦','Estados Unidos':'🇺🇸','Paraguai':'🇵🇾',
+  'Alemanha':'🇩🇪','Japão':'🇯🇵','Argentina':'🇦🇷','Chile':'🇨🇱','Espanha':'🇪🇸','Camarões':'🇨🇲',
+  'Portugal':'🇵🇹','Tanzânia':'🇹🇿','Inglaterra':'🏴','Tunísia':'🇹🇳','Uruguai':'🇺🇾','Egito':'🇪🇬',
+  'Holanda':'🇳🇱','Arábia Saudita':'🇸🇦','Austrália':'🇦🇺','Índia':'🇮🇳','França':'🇫🇷','Nigéria':'🇳🇬',
+  'Bélgica':'🇧🇪','Ucrânia':'🇺🇦','Suíça':'🇨🇭','Servia':'🇷🇸','Colômbia':'🇨🇴','Costa Rica':'🇨🇷',
+  'Dinamarca':'🇩🇰','Estônia':'🇪🇪','Polônia':'🇵🇱','Turquia':'🇹🇷','Iran':'🇮🇷','Venezuela':'🇻🇪',
+  'Equador':'🇪🇨','Honduras':'🇭🇳','Peru':'🇵🇪','Bolívia':'🇧🇴','Nova Zelândia':'🇳🇿','Fiji':'🇫🇯',
+  'Gana':'🇬🇭','Senegal':'🇸🇳','Costa do Marfim':'🇨🇮','Angola':'🇦🇴','Mali':'🇲🇱','Guiné':'🇬🇳',
+  'Catar':'🇶🇦','Iraque':'🇮🇶','Jordânia':'🇯🇴','Kuwait':'🇰🇼','Omã':'🇴🇲','Bahrein':'🇧🇭',
+  'Jamaica':'🇯🇲','Trinidad e Tobago':'🇹🇹','Panamá':'🇵🇦','El Salvador':'🇸🇻','Guatemala':'🇬🇹','Cuba':'🇨🇺',
+  'Curaçau':'🇨🇼','Suriname':'🇸🇷','Guiana':'🇬🇾',
+  'Albânia':'🇦🇱','Eslovênia':'🇸🇮','Geórgia':'🇬🇪','Eslováquia':'🇸🇰','Hungria':'🇭🇺','Romênia':'🇷🇴',
+  'Áustria':'🇦🇹','Croácia':'🇭🇷','República Tcheca':'🇨🇿','Grécia':'🇬🇷',
+  // Jogos teste
+  'LDU Quito':'🇪🇨','Always Ready':'🇧🇴','Lanús':'🇦🇷','Mirassol':'🇧🇷','Universitario':'🇵🇪',
+  'Tolima':'🇨🇴','Nacional':'🇺🇾','Coquimbo Unido':'🇨🇱','Flamengo':'🇧🇷','Cusco':'🇵🇪',
+  'Estudiantes':'🇦🇷','Ind. Medellín':'🇨🇴','Grêmio':'🇧🇷','Mvd City Torque':'🇺🇾',
+  'Palestino':'🇨🇱','Dep. Riestra':'🇦🇷','São Paulo':'🇧🇷','Boston River':'🇺🇾',
+  'Millonarios':'🇨🇴',"O'Higgins":'🇨🇱','Santos':'🇧🇷','Dep. Cuenca':'🇪🇨',
+  'San Lorenzo':'🇦🇷','Recoleta':'🇨🇱',
+};
+function flag(name){
+  const f=FLAGS[name];
+  if(!f)return'⚽';
+  // Text fallbacks render differently in canvas
+  if(f.length<=3&&/^[A-Z]/.test(f))return f; // text sigla
+  return f;
+}
+
+// Round grouping for line chart
+function getGameRound(g){
+  if(!g.date)return'Mata-Mata';
+  const d=new Date(g.date+'T00:00:00-03:00');
+  const m=d.getMonth()+1,day=d.getDate();
+  // Test games
+  if(g.group==='LIB')return'🏆 Libertadores';
+  if(g.group==='SUL')return'🏆 Sul-Americana';
+  // Group stage rounds based on date ranges
+  if(m===6&&day>=11&&day<=17)return'Rodada 1';
+  if(m===6&&day>=18&&day<=24)return'Rodada 2';
+  if(m===6&&day>=25||m===7&&day<=2)return'Rodada 3';
+  // Knockout
+  const phase=g.phase||'';
+  if(phase==='R16')return'Oitavas';
+  if(phase==='QF')return'Quartas';
+  if(phase==='SF')return'Semifinais';
+  if(phase==='3P'||phase==='3PL')return'3º Lugar';
+  if(phase==='F')return'Final';
+  return'Mata-Mata';
+}
+
+function shortName(name){
+  if(!name)return'';
+  const parts=name.trim().split(' ').filter(Boolean);
+  if(parts.length===1)return parts[0];
+  const first=parts[0].charAt(0).toUpperCase()+parts[0].slice(1).toLowerCase();
+  const last=parts[parts.length-1].charAt(0).toUpperCase()+parts[parts.length-1].slice(1).toLowerCase();
+  return`${first} ${last}`;
+}
+
+const SELECOES=[
+  'Alemanha','Argentina','Arábia Saudita','Austrália','Áustria',
+  'Bélgica','Bósnia e Herz.','Brasil','Canadá','Cabo Verde',
+  'Catar','Colômbia','Coreia do Sul','Costa do Marfim','Croácia',
+  'Curaçau','Egito','Equador','Escócia','Espanha',
+  'Estados Unidos','França','Gana','Haiti','Holanda',
+  'Inglaterra','Irã','Iraque','Japão','Jordânia',
+  'Marrocos','México','Nova Zelândia','Noruega','Panamá',
+  'Paraguai','Portugal','R.D. do Congo','Rep. Tcheca','Senegal',
+  'Suécia','Suíça','Tunísia','Turquia','Uruguai',
+  'Uzbequistão','África do Sul',
+];
+
+const GROUP_GAMES=[
+  // === JOGOS TESTE — LIBERTADORES E SUL-AMERICANA (26/05/2026) ===
+  {id:200,group:'LIB',home:'LDU Quito',away:'Always Ready',date:'2026-05-26',time:'19:00',city:'Quito'},
+  {id:201,group:'LIB',home:'Lanús',away:'Mirassol',date:'2026-05-26',time:'19:00',city:'Buenos Aires'},
+  {id:202,group:'LIB',home:'Universitario',away:'Tolima',date:'2026-05-26',time:'21:30',city:'Lima'},
+  {id:203,group:'LIB',home:'Nacional',away:'Coquimbo Unido',date:'2026-05-26',time:'21:30',city:'Montevidéu'},
+  {id:204,group:'LIB',home:'Flamengo',away:'Cusco',date:'2026-05-26',time:'21:30',city:'Rio de Janeiro'},
+  {id:205,group:'LIB',home:'Estudiantes',away:'Ind. Medellín',date:'2026-05-26',time:'21:30',city:'La Plata'},
+  {id:206,group:'SUL',home:'Grêmio',away:'Mvd City Torque',date:'2026-05-26',time:'19:00',city:'Porto Alegre'},
+  {id:207,group:'SUL',home:'Palestino',away:'Dep. Riestra',date:'2026-05-26',time:'19:00',city:'Santiago'},
+  {id:208,group:'SUL',home:'São Paulo',away:'Boston River',date:'2026-05-26',time:'19:00',city:'São Paulo'},
+  {id:209,group:'SUL',home:'Millonarios',away:"O'Higgins",date:'2026-05-26',time:'19:00',city:'Bogotá'},
+  {id:210,group:'SUL',home:'Santos',away:'Dep. Cuenca',date:'2026-05-26',time:'21:30',city:'Santos'},
+  {id:211,group:'SUL',home:'San Lorenzo',away:'Recoleta',date:'2026-05-26',time:'21:30',city:'Buenos Aires'},
+  // === FIM JOGOS TESTE ===
+  {id:1,group:'A',home:'México',away:'África do Sul',date:'2026-06-11',time:'16:00',city:'Cidade do México'},
+  {id:2,group:'A',home:'Coreia do Sul',away:'Rep. Tcheca',date:'2026-06-11',time:'23:00',city:'Guadalajara'},
+  {id:3,group:'B',home:'Canadá',away:'Bósnia e Herz.',date:'2026-06-12',time:'16:00',city:'Toronto'},
+  {id:4,group:'B',home:'Catar',away:'Suíça',date:'2026-06-13',time:'16:00',city:'Santa Clara'},
+  {id:5,group:'C',home:'Brasil',away:'Marrocos',date:'2026-06-13',time:'19:00',city:'N.York/N.Jersey'},
+  {id:6,group:'C',home:'Haiti',away:'Escócia',date:'2026-06-13',time:'22:00',city:'Boston'},
+  {id:7,group:'D',home:'Estados Unidos',away:'Paraguai',date:'2026-06-12',time:'22:00',city:'Los Angeles'},
+  {id:8,group:'D',home:'Austrália',away:'Turquia',date:'2026-06-14',time:'01:00',city:'Vancouver'},
+  {id:9,group:'E',home:'Alemanha',away:'Costa do Marfim',date:'2026-06-14',time:'14:00',city:'Houston'},
+  {id:10,group:'E',home:'Equador',away:'Curaçau',date:'2026-06-14',time:'20:00',city:'Filadélfia'},
+  {id:11,group:'F',home:'Holanda',away:'Japão',date:'2026-06-14',time:'17:00',city:'Dallas'},
+  {id:12,group:'F',home:'Suécia',away:'Tunísia',date:'2026-06-14',time:'23:00',city:'Monterrey'},
+  {id:13,group:'G',home:'Bélgica',away:'Egito',date:'2026-06-15',time:'16:00',city:'Seattle'},
+  {id:14,group:'H',home:'Espanha',away:'Cabo Verde',date:'2026-06-15',time:'13:00',city:'Atlanta'},
+  {id:15,group:'G',home:'Irã',away:'Nova Zelândia',date:'2026-06-15',time:'22:00',city:'Los Angeles'},
+  {id:16,group:'H',home:'Arábia Saudita',away:'Uruguai',date:'2026-06-15',time:'19:00',city:'Miami'},
+  {id:17,group:'I',home:'França',away:'Senegal',date:'2026-06-16',time:'16:00',city:'N.York/N.Jersey'},
+  {id:18,group:'I',home:'Iraque',away:'Noruega',date:'2026-06-16',time:'19:00',city:'Boston'},
+  {id:19,group:'J',home:'Argentina',away:'Argélia',date:'2026-06-16',time:'22:00',city:'Kansas City'},
+  {id:20,group:'J',home:'Áustria',away:'Jordânia',date:'2026-06-17',time:'01:00',city:'Santa Clara'},
+  {id:21,group:'K',home:'Portugal',away:'R.D. do Congo',date:'2026-06-17',time:'14:00',city:'Houston'},
+  {id:22,group:'L',home:'Inglaterra',away:'Croácia',date:'2026-06-17',time:'17:00',city:'Dallas'},
+  {id:23,group:'K',home:'Uzbequistão',away:'Colômbia',date:'2026-06-17',time:'23:00',city:'Cidade do México'},
+  {id:24,group:'L',home:'Gana',away:'Panamá',date:'2026-06-18',time:'20:00',city:'Toronto'},
+  {id:25,group:'A',home:'Rep. Tcheca',away:'África do Sul',date:'2026-06-18',time:'13:00',city:'Atlanta'},
+  {id:26,group:'B',home:'Suíça',away:'Bósnia e Herz.',date:'2026-06-18',time:'16:00',city:'Los Angeles'},
+  {id:27,group:'A',home:'México',away:'Coreia do Sul',date:'2026-06-18',time:'22:00',city:'Guadalajara'},
+  {id:28,group:'C',home:'Escócia',away:'Marrocos',date:'2026-06-19',time:'19:00',city:'Boston'},
+  {id:29,group:'C',home:'Brasil',away:'Haiti',date:'2026-06-19',time:'21:30',city:'Filadélfia'},
+  {id:54,group:'C',home:'Brasil',away:'Escócia',date:'2026-06-27',time:'22:00',city:'Los Angeles'},
+  {id:63,group:'C',home:'Marrocos',away:'Haiti',date:'2026-06-27',time:'22:00',city:'Boston'},
+  {id:30,group:'B',home:'Canadá',away:'Catar',date:'2026-06-19',time:'19:00',city:'Vancouver'},
+  {id:31,group:'D',home:'Estados Unidos',away:'Turquia',date:'2026-06-19',time:'16:00',city:'Seattle'},
+  {id:32,group:'D',home:'Austrália',away:'Paraguai',date:'2026-06-20',time:'08:00',city:'Santa Clara'},
+  {id:33,group:'E',home:'Alemanha',away:'Curaçau',date:'2026-06-20',time:'17:00',city:'Toronto'},
+  {id:34,group:'E',home:'Equador',away:'Costa do Marfim',date:'2026-06-20',time:'21:00',city:'Kansas City'},
+  {id:35,group:'F',home:'Holanda',away:'Suécia',date:'2026-06-21',time:'14:00',city:'Houston'},
+  {id:36,group:'F',home:'Tunísia',away:'Japão',date:'2026-06-21',time:'01:00',city:'Monterrey'},
+  {id:37,group:'G',home:'Bélgica',away:'Irã',date:'2026-06-21',time:'16:00',city:'Los Angeles'},
+  {id:38,group:'H',home:'Espanha',away:'Arábia Saudita',date:'2026-06-21',time:'13:00',city:'Atlanta'},
+  {id:39,group:'G',home:'Nova Zelândia',away:'Egito',date:'2026-06-21',time:'22:00',city:'Vancouver'},
+  {id:40,group:'H',home:'Uruguai',away:'Cabo Verde',date:'2026-06-21',time:'19:00',city:'Miami'},
+  {id:41,group:'I',home:'França',away:'Iraque',date:'2026-06-22',time:'18:00',city:'N.York/N.Jersey'},
+  {id:42,group:'I',home:'Noruega',away:'Senegal',date:'2026-06-22',time:'21:00',city:'Filadélfia'},
+  {id:43,group:'J',home:'Argentina',away:'Áustria',date:'2026-06-22',time:'14:00',city:'Dallas'},
+  {id:44,group:'J',home:'Jordânia',away:'Argélia',date:'2026-06-23',time:'08:00',city:'Santa Clara'},
+  {id:45,group:'L',home:'Inglaterra',away:'Gana',date:'2026-06-23',time:'17:00',city:'Boston'},
+  {id:46,group:'L',home:'Panamá',away:'Croácia',date:'2026-06-23',time:'20:00',city:'Toronto'},
+  {id:47,group:'K',home:'Portugal',away:'Uzbequistão',date:'2026-06-23',time:'14:00',city:'Houston'},
+  {id:48,group:'K',home:'Colômbia',away:'R.D. do Congo',date:'2026-06-23',time:'23:00',city:'Guadalajara'},
+  {id:49,group:'A',home:'Rep. Tcheca',away:'México',date:'2026-06-24',time:'22:00',city:'Cidade do México'},
+  {id:50,group:'D',home:'Turquia',away:'Paraguai',date:'2026-06-25',time:'23:00',city:'Los Angeles'},
+  {id:51,group:'D',home:'Estados Unidos',away:'Austrália',date:'2026-06-25',time:'23:00',city:'Santa Clara'},
+  {id:52,group:'B',home:'Bósnia e Herz.',away:'Catar',date:'2026-06-24',time:'16:00',city:'Seattle'},
+  {id:53,group:'A',home:'África do Sul',away:'Coreia do Sul',date:'2026-06-24',time:'22:00',city:'Cidade do México'},
+  {id:55,group:'E',home:'Equador',away:'Curaçau',date:'2026-06-25',time:'17:00',city:'Filadélfia'},
+  {id:56,group:'E',home:'Alemanha',away:'Costa do Marfim',date:'2026-06-25',time:'17:00',city:'N.York/N.Jersey'},
+  {id:57,group:'F',home:'Japão',away:'Suécia',date:'2026-06-25',time:'20:00',city:'Dallas'},
+  {id:58,group:'F',home:'Tunísia',away:'Holanda',date:'2026-06-25',time:'20:00',city:'Kansas City'},
+  {id:59,group:'G',home:'Irã',away:'Bélgica',date:'2026-06-27',time:'08:00',city:'Seattle'},
+  {id:60,group:'G',home:'Nova Zelândia',away:'Egito',date:'2026-06-27',time:'08:00',city:'Vancouver'},
+  {id:61,group:'I',home:'Noruega',away:'França',date:'2026-06-26',time:'16:00',city:'Boston'},
+  {id:62,group:'I',home:'Senegal',away:'Iraque',date:'2026-06-26',time:'16:00',city:'Toronto'},
+  {id:65,group:'H',home:'Cabo Verde',away:'Espanha',date:'2026-06-26',time:'21:00',city:'Houston'},
+  {id:66,group:'H',home:'Uruguai',away:'Arábia Saudita',date:'2026-06-26',time:'21:00',city:'Guadalajara'},
+  {id:67,group:'J',home:'Argélia',away:'Áustria',date:'2026-06-27',time:'23:00',city:'Kansas City'},
+  {id:68,group:'J',home:'Jordânia',away:'Argentina',date:'2026-06-27',time:'23:00',city:'Dallas'},
+  {id:71,group:'K',home:'Colômbia',away:'Portugal',date:'2026-06-27',time:'20:30',city:'Miami'},
+  {id:72,group:'K',home:'R.D. do Congo',away:'Uzbequistão',date:'2026-06-27',time:'20:30',city:'Atlanta'},
+  {id:73,group:'L',home:'Croácia',away:'Panamá',date:'2026-06-27',time:'18:00',city:'N.York/N.Jersey'},
+  {id:74,group:'L',home:'Gana',away:'Inglaterra',date:'2026-06-27',time:'18:00',city:'Filadélfia'},
+  {id:75,group:'B',home:'Canadá',away:'Suíça',date:'2026-06-24',time:'16:00',city:'Vancouver'},
+];
+
+const KNOCKOUT_TEMPLATE=[
+  {phase:'TEST',label:'🧪 Jogos Teste (26/Mai)',count:0},
+  {phase:'LIB',label:'🏆 Libertadores 2026',count:0},
+  {phase:'SUL',label:'🏆 Copa Sul-Americana 2026',count:0},
+  {phase:'R16',label:'Dezesseis Avos de Final',count:16},
+  {phase:'QF',label:'Oitavas de Final',count:8},
+  {phase:'SF',label:'Quartas de Final',count:4},
+  {phase:'3P',label:'Semifinais',count:2},
+  {phase:'3PL',label:'Disputa 3º/4º Lugar',count:1},
+  {phase:'F',label:'Final',count:1},
+];
+
+const GROUPS=['LIB','SUL','A','B','C','D','E','F','G','H','I','J','K','L'];
+
+function calcPoints(pick,result,cfg,isKnockout){
+  if(!result||result.home===''||result.home===undefined||result.away===''||result.away===undefined)return null;
+  if(!pick||pick.home===''||pick.home===undefined||pick.away===''||pick.away===undefined)return 0;
+  const ph=parseInt(pick.home),pa=parseInt(pick.away);
+  const rh=parseInt(result.home),ra=parseInt(result.away);
+  if(isNaN(ph)||isNaN(pa)||isNaN(rh)||isNaN(ra))return 0;
+  const exact=(cfg?.exactScore||10);
+  const winner=(cfg?.onlyWinner||5);
+  if(ph===rh&&pa===ra)return exact;
+  const pw=ph>pa?'H':ph<pa?'A':'D';
+  const rw=rh>ra?'H':rh<ra?'A':'D';
+  if(pw!==rw)return 0;
+  return winner;
+}
+
+function computeScores(state){
+  const{players,picks,results,config,knockoutGames=[]}=state;
+  const scores={};
+  players.forEach(p=>{
+    let pts=0,exact=0;
+    GROUP_GAMES.forEach(g=>{
+      const res=results[g.id];
+      const pick=(picks[p.id]||{})[g.id];
+      const pt=calcPoints(pick,res,config,false);
+      if(pt>0){pts+=pt;if(pt===(config?.exactScore||10))exact++;}
+    });
+    knockoutGames.forEach(g=>{
+      const res=results[g.id];
+      const pick=(picks[p.id]||{})[g.id];
+      const pt=calcPoints(pick,res,config,true);
+      if(pt>0){pts+=pt;if(pt===(config?.exactScore||10))exact++;}
+    });
+    function matchAlias(pick,finalVal){
+      if(!pick||!finalVal)return false;
+      const aliases=finalVal.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+      return aliases.includes(pick.trim().toLowerCase());
+    }
+    if(matchAlias(p.topScorer,state.finalTopScorer))pts+=config.topScorer;
+    const bp=p.bonusPicks||{};
+    if(matchAlias(bp.champion,state.finalChampion))pts+=config.champion;
+    if(matchAlias(bp.runnerUp,state.finalRunnerUp))pts+=config.runnerUp;
+    if(matchAlias(bp.third,state.finalThird))pts+=config.third;
+    scores[p.id]={total:pts,exact};
+  });
+  return scores;
+}
+
+function isLocked(game,lockMin){
+  if(!game||!game.date||!game.time)return false;
+  let date=game.date;
+  if(date.includes('/')){
+    const parts=date.split('/');
+    if(parts.length===3) date=`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  }
+  const dt=new Date(`${date}T${game.time}:00-03:00`);
+  if(isNaN(dt.getTime()))return false;
+  return Date.now()>=(dt.getTime()-lockMin*60000);
+}
+
+function genId(){return Math.random().toString(36).slice(2,9).toUpperCase()}
+
+// ── GITHUB API ───────────────────────────────────
+let _sha='';
+
+async function ghFetch(){
+  const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}?ref=main&t=${Date.now()}`;
+  const res=await fetch(url,{headers:{'Accept':'application/vnd.github+json','Authorization':`Bearer ${GITHUB_TOKEN}`}});
+  if(!res.ok)throw new Error(`GitHub ${res.status}`);
+  const json=await res.json();
+  _sha=json.sha;
+  // CORREÇÃO: usa fromBase64 com suporte a UTF-8
+  return JSON.parse(fromBase64(json.content.replace(/\n/g,'')));
+}
+
+async function logSuspeita(entry){
+  try{
+    // Fetch current suspeita.json
+    const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUSPEITA_PATH}?t=${Date.now()}`;
+    const res=await fetch(url,{headers:{'Accept':'application/vnd.github+json','Authorization':`Bearer ${GITHUB_TOKEN}`}});
+    let lista=[],sha='';
+    if(res.ok){
+      const json=await res.json();
+      sha=json.sha;
+      try{lista=JSON.parse(fromBase64(json.content.replace(/\n/g,'')));}catch(e){}
+    }
+    lista.unshift(entry);
+    if(lista.length>200)lista.splice(200);
+    const putUrl=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUSPEITA_PATH}`;
+    const body={message:'⚠️ alteracao suspeita detectada',content:toBase64(JSON.stringify(lista,null,2)),branch:'main'};
+    if(sha)body.sha=sha;
+    await fetch(putUrl,{method:'PUT',headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }catch(e){console.warn('suspeita log failed:',e);}
+}
+
+async function getServerTimeBrasilia(){
+  const res=await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`,{
+    headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Accept':'application/vnd.github+json'}
+  });
+  const dateHeader=res.headers.get('Date');
+  if(!dateHeader)return Date.now();
+  return new Date(dateHeader).getTime();
+}
+
+function isLockedByServerTime(game,lockMin,serverNowMs){
+  if(!game.date||!game.time)return false;
+  const dt=new Date(`${game.date}T${game.time}:00-03:00`);
+  return serverNowMs>=(dt.getTime()-lockMin*60000);
+}
+
+// ── MERGE SEGURO COM RETRY ─────────────────────────────────────────
+// CORREÇÃO PRINCIPAL: em vez de salvar o state inteiro do navegador,
+// sempre buscamos o estado mais recente do GitHub, aplicamos APENAS
+// a mudança deste jogador/admin, e salvamos. Se houver conflito de SHA
+// (duas pessoas salvando ao mesmo tempo), aguardamos e tentamos de novo.
+async function safeMergeSave(updateFn, retries=4){
+  for(let i=0; i<retries; i++){
+    try{
+      const fresh = await ghFetch(); // busca estado atual + SHA atual
+      updateFn(fresh);               // aplica apenas a mudança necessária
+      const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}`;
+      const body={
+        message:'bolão: update',
+        // CORREÇÃO: usa toBase64 com suporte a UTF-8
+        content: toBase64(JSON.stringify(fresh,null,2)),
+        sha:_sha,
+        branch:'main'
+      };
+      const res=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!res.ok){
+        const e=await res.json();
+        // Conflito de SHA = outra pessoa salvou antes de nós
+        if(res.status===409||(e.message&&e.message.includes('sha'))){
+          await new Promise(r=>setTimeout(r,700*(i+1)));
+          continue; // tenta de novo com SHA novo
+        }
+        throw new Error(e.message||res.status);
+      }
+      const json=await res.json();
+      _sha=json.content.sha;
+      return true;
+    }catch(err){
+      if(i===retries-1)throw err;
+      await new Promise(r=>setTimeout(r,700*(i+1)));
+    }
+  }
+}
+
+async function ghSave(data, picksPlayerId, allGames, lockMin, isAdmin=false){
+  if(isAdmin){
+    // Detectar alterações suspeitas: resultado alterado após horário do jogo
+    const serverNowCheck=await getServerTimeBrasilia();
+    const allGamesCheck=[...GROUP_GAMES,...(data.knockoutGames||[])];
+    const freshCheck=await ghFetch();
+    allGamesCheck.forEach(g=>{
+      const oldRes=freshCheck.results?.[g.id];
+      const newRes=data.results?.[g.id];
+      if(!oldRes||!newRes)return;
+      // Só suspeito se o jogo já terminou (passou da hora do jogo)
+      if(!g.date||!g.time)return;
+      const gameEnd=new Date(`${g.date}T${g.time}:00-03:00`).getTime()+120*60000; // +2h após início
+      if(serverNowCheck<gameEnd)return;
+      // Verificar se resultado mudou
+      const oldH=String(oldRes.home||'').trim();
+      const oldA=String(oldRes.away||'').trim();
+      const newH=String(newRes.home||'').trim();
+      const newA=String(newRes.away||'').trim();
+      const hadResult=oldH!==''&&!isNaN(parseInt(oldH));
+      const hasResult=newH!==''&&!isNaN(parseInt(newH));
+      if(hadResult&&hasResult&&(oldH!==newH||oldA!==newA)){
+        const now=new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
+        logSuspeita({
+          timestamp:new Date().toISOString(),
+          horario:now,
+          jogo:`#${g.id} ${g.home} × ${g.away}`,
+          data:`${g.date} ${g.time}`,
+          resultadoAnterior:`${oldH}×${oldA}`,
+          resultadoNovo:`${newH}×${newA}`,
+          aviso:'Resultado alterado após término do jogo',
+        });
+      }
+    });
+    // Admin: merge seguro — NUNCA sobrescreve picks dos jogadores
+    // Admin só pode alterar: results, knockoutGames, config, players (cadastro), finais
+    // Picks de cada jogador são PRESERVADOS do servidor — admin não mexe neles
+    await safeMergeSave(fresh=>{
+      fresh.results       = data.results;
+      fresh.knockoutGames = data.knockoutGames;
+      fresh.config        = data.config;
+      fresh.finalTopScorer= data.finalTopScorer;
+      fresh.finalChampion = data.finalChampion;
+      fresh.finalRunnerUp = data.finalRunnerUp;
+      fresh.finalThird    = data.finalThird;
+      // Players: merge seguro — preserva picks e dados que o jogador pode ter atualizado
+      // Só atualiza campos que o admin gerencia (nome, username, email, password)
+      // Nunca sobrescreve bonusPicks ou topScorer que o jogador preencheu
+      data.players.forEach(adminPlayer=>{
+        const idx=fresh.players.findIndex(p=>p.id===adminPlayer.id);
+        if(idx>=0){
+          // Preserva bonusPicks e topScorer do servidor (o jogador pode ter atualizado)
+          fresh.players[idx]={
+            ...fresh.players[idx],          // mantém tudo do servidor
+            name:adminPlayer.name,          // admin pode editar nome
+            username:adminPlayer.username,  // admin pode editar usuário
+            email:adminPlayer.email,        // admin pode editar email
+            password:adminPlayer.password,  // admin pode editar senha
+          };
+        } else {
+          // Jogador novo adicionado pelo admin
+          fresh.players.push(adminPlayer);
+        }
+      });
+      // Remove jogadores que o admin removeu
+      fresh.players=fresh.players.filter(fp=>data.players.some(ap=>ap.id===fp.id));
+    });
+    return;
+  }
+
+  if(picksPlayerId){
+    // Jogador: merge SOMENTE dos dados deste jogador no estado mais recente
+    const serverNow = await getServerTimeBrasilia();
+    const playerData = data.players.find(p=>p.id===picksPlayerId);
+    const playerPicks = (data.picks||{})[picksPlayerId]||{};
+
+    await safeMergeSave(fresh=>{
+      // Picks: aplica apenas os picks deste jogador, respeitando lock
+      const serverPicks = (fresh.picks||{})[picksPlayerId]||{};
+      const sanitized = {...playerPicks};
+      if(allGames && lockMin!==undefined){
+        allGames.forEach(g=>{
+          if(isLockedByServerTime(g,lockMin,serverNow)){
+            if(serverPicks[g.id]===undefined) delete sanitized[g.id];
+            else sanitized[g.id]=serverPicks[g.id];
+          }
+        });
+      }
+      if(!fresh.picks) fresh.picks={};
+      fresh.picks[picksPlayerId] = sanitized;
+
+      // Dados pessoais: bonusPicks, topScorer
+      if(playerData){
+        const idx = fresh.players.findIndex(p=>p.id===picksPlayerId);
+        if(idx>=0){
+          fresh.players[idx].bonusPicks = playerData.bonusPicks||{};
+          fresh.players[idx].topScorer  = playerData.topScorer||'';
+        }
+      }
+    });
+  }
+}
+// ──────────────────────────────────────────────────────────────────
+
+// ── COMPONENTES BASE ─────────────────────────────
+function SavingBar({status}){
+  if(!status)return null;
+  return(
+    <div className="saving-bar">
+      {status==='saving'?<><div className="spinner"/><span>Salvando...</span></>
+      :status==='ok'?<span style={{color:'var(--green)'}}>✓ Salvo!</span>
+      :<span style={{color:'var(--red)'}}>✗ Erro ao salvar</span>}
+    </div>
+  );
+}
+
+function ScoreInput({value,onChange,disabled}){
+  return(
+    <input type="number" min="0" max="30" className="score-box"
+      value={value===undefined||value===''?'':value}
+      onChange={e=>onChange(e.target.value)}
+      disabled={disabled} placeholder="–"
+      style={{width:38,padding:'4px 2px',textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",fontWeight:700}}
+    />
+  );
+}
+
+function MatchRow({game,pick,onPick,locked,result,isKnockout,isGolden}){
+  const[h,setH]=useState(pick?.home??'');
+  const[a,setA]=useState(pick?.away??'');
+  useEffect(()=>{setH(pick?.home??'');setA(pick?.away??'')},[pick]);
+  function handle(side,val){
+    const nh=side==='h'?val:h,na=side==='a'?val:a;
+    side==='h'?setH(val):setA(val);
+    onPick({home:nh,away:na});
+  }
+  const pts=result?calcPoints({home:h,away:a},result,{},isKnockout):null;
+
+  let blockBg='var(--surface2)',blockBorder='var(--border)',resultLabel=null;
+  if(result&&locked){
+    if(pts>=(10)){
+      blockBg='#00c85312';blockBorder='#00c85355';
+      resultLabel=<div style={{fontSize:10,fontWeight:700,color:'#00c853',marginBottom:3,letterSpacing:.5}}>✅ ACERTOU O PLACAR!</div>;
+    } else if(pts>0){
+      blockBg='#ffd60012';blockBorder='#ffd60055';
+      resultLabel=<div style={{fontSize:10,fontWeight:700,color:'#ffd600',marginBottom:3,letterSpacing:.5}}>🟡 ACERTO PARCIAL</div>;
+    } else if(pts===0){
+      blockBg='#ff3d5712';blockBorder='#ff3d5755';
+      resultLabel=<div style={{fontSize:10,fontWeight:700,color:'#ff3d57',marginBottom:3,letterSpacing:.5}}>❌ ERROU</div>;
+    }
+  }
+
+  const ptsBadge=pts===null?null:pts>=10?'badge-green':pts>0?'badge-yellow':'badge-red';
+
+  return(
+    <div style={{background:isGolden&&!locked?'#ffd60005':blockBg,border:`1px solid ${isGolden&&!locked?'#ffd60044':blockBorder}`,borderRadius:10,padding:'.6rem .8rem',marginBottom:6,transition:'background .3s,border .3s',pointerEvents:locked?'none':'auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'.3rem'}}>
+        <span style={{fontFamily:"'Bebas Neue'",fontSize:'.85rem',color:'var(--muted)'}}>#{game.id} · {game.date?game.date.slice(8)+'/'+game.date.slice(5,7):''} {game.time}</span>
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          {locked&&<span style={{fontSize:11}}>🔒</span>}
+          {ptsBadge&&<span className={`badge ${ptsBadge}`}>{pts}pts</span>}
         </div>
       </div>
-      <div className="content">
-        <div className="hero">
-          <h1 className="hero-title">Bolão do Vini</h1>
-          <div className="hero-line"></div>
-          <div className="hero-meta">Copa do Mundo 2026 ⚽</div>
+      {result&&result.home!==''&&result.home!==undefined&&(
+        <div style={{marginBottom:'.4rem'}}>
+          {locked&&resultLabel}
+          <div style={{display:'inline-flex',alignItems:'center',gap:8,background:'#00000030',borderRadius:7,padding:'4px 12px'}}>
+            <span style={{fontSize:10,color:'var(--muted)'}}>Resultado:</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:17,color:'#fff',letterSpacing:2}}>{game.home.split(' ')[0]} {result.home} × {result.away} {game.away.split(' ')[0]}</span>
+          </div>
         </div>
-        <div className="card">
-          <h2>Em construção</h2>
-          <p>Site em desenvolvimento. Volte em breve!</p>
+      )}
+      <div style={{display:'flex',alignItems:'center',gap:6,opacity:locked?.8:1}}>
+        <span style={{fontWeight:600,fontSize:13,flex:1,textAlign:'right',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{game.home}</span>
+        <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+          <ScoreInput value={h} onChange={v=>handle('h',v)} disabled={locked}/>
+          <span style={{color:'var(--muted)',fontSize:10,fontWeight:700}}>×</span>
+          <ScoreInput value={a} onChange={v=>handle('a',v)} disabled={locked}/>
         </div>
+        <span style={{fontWeight:600,fontSize:13,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{game.away}</span>
       </div>
     </div>
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+function ChartView({state}){
+  const refs={line:useRef(null),bars:useRef(null),heat:useRef(null),dist:useRef(null),gap:useRef(null),form:useRef(null)};
+  const wrapRef=useRef(null);
+  const [tick,setTick]=useState(0);
+  const [roundFilter,setRoundFilter]=useState('game'); // 'all' or a round name
+  const [tooltip,setTooltip]=useState(null); // {x,y,text}
+  const hoverDataRef=useRef({}); // stores hover regions per chart
+  const CLIST=['#ffd600','#00c853','#1e88e5','#ff3d57','#ab47bc','#ff7043','#26c6da','#66bb6a','#ef5350','#42a5f5','#ffca28'];
+
+  // Filter state
+  const [hiddenPlayers,setHiddenPlayers]=useState(new Set());
+  const [phaseFilter,setPhaseFilter]=useState('all'); // 'all' | 'group' | 'knockout'
+  function togglePlayer(id){
+    setHiddenPlayers(prev=>{
+      const next=new Set(prev);
+      next.has(id)?next.delete(id):next.add(id);
+      return next;
+    });
+  }
+
+  const allGames=useMemo(()=>[...GROUP_GAMES,...(state.knockoutGames||[])].filter(g=>g.home&&g.away),[state.knockoutGames]);
+  // Check ALL possible game IDs from results (not just allGames which filters by home&&away)
+  const allPossibleGames=useMemo(()=>[...GROUP_GAMES,...(state.knockoutGames||[])],[state.knockoutGames]);
+  const gamesWithResultAll=useMemo(()=>allPossibleGames.filter(g=>{
+    const r=state.results?.[g.id];
+    return r&&r.home!==''&&r.home!==undefined&&r.away!==''&&r.away!==undefined&&!isNaN(parseInt(r.home))&&!isNaN(parseInt(r.away));
+  }),[allPossibleGames,state.results]);
+  const knockoutIds=useMemo(()=>new Set((state.knockoutGames||[]).map(g=>g.id)),[state.knockoutGames]);
+  const gamesWithResult=useMemo(()=>gamesWithResultAll.filter(g=>{
+    if(phaseFilter==='group')return!knockoutIds.has(g.id);
+    if(phaseFilter==='knockout')return knockoutIds.has(g.id);
+    return true;
+  }),[gamesWithResultAll,phaseFilter,knockoutIds]);
+
+  // Totais fixos Copa 2026 (72 grupos + 32 mata-mata = 104)
+  const TOTAL_GROUP=72;
+  const TOTAL_KNOCKOUT=32;
+  const TOTAL_ALL=TOTAL_GROUP+TOTAL_KNOCKOUT; // 104
+
+  const totalFixed=phaseFilter==='group'?TOTAL_GROUP:phaseFilter==='knockout'?TOTAL_KNOCKOUT:TOTAL_ALL;
+  const scored=gamesWithResult.length;
+  const pct=Math.round(scored/totalFixed*100);
+  const remaining=totalFixed-scored;
+  const exactPts=state.config?.exactScore||10;
+  const ptsDone=scored*exactPts;
+  const ptsLeft=remaining*exactPts;
+
+  const detailed=useMemo(()=>computeDetailedScores(state),[state]);
+  const allRanked=useMemo(()=>state.players.map((p,i)=>({...p,...detailed[p.id]||{total:0,exact:0,onlyWinner:0},color:CLIST[i%CLIST.length]})).sort((a,b)=>b.total-a.total),[state.players,detailed]);
+  const ranked=useMemo(()=>allRanked.filter(p=>!hiddenPlayers.has(p.id)),[allRanked,hiddenPlayers]);
+
+  function dc(key,fn){
+    const canvas=refs[key]?.current;const wrap=wrapRef.current;
+    if(!canvas||!wrap)return;
+    const dpr=window.devicePixelRatio||1;
+    const wrapW=wrap.offsetWidth||wrap.parentElement?.offsetWidth||800;
+    if(wrapW<10)return; // not visible yet
+    const distMinW=key==='dist'?Math.max(wrapW,Math.min(5,gamesWithResult.length)*(isMobileCanvas?140:200)):wrapW;
+    const heatMinW=key==='heat'?Math.max(wrapW,gamesWithResult.slice(-20).length*34+95):wrapW;
+    const scrollChartMin=scrollCharts.has(key)?Math.max(wrapW,key==='dist'?distMinW:key==='heat'?heatMinW:ranked.length*54+60):wrapW;
+    const CW=scrollChartMin;
+    const isMobileCanvas=wrapW<480;
+    const CH=key==='heat'?Math.max(160,state.players.length*(isMobileCanvas?28:34)+56):isMobileCanvas?200:240;
+    canvas.style.width=CW+'px';canvas.style.height=CH+'px';
+    canvas.width=Math.round(CW*dpr);canvas.height=Math.round(CH*dpr);
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    ctx.fillStyle='#0d1220';ctx.fillRect(0,0,CW,CH);
+    fn(ctx,CW,CH);
+  }
+
+  function gridLines(ctx,CW,CH,pad,steps,maxVal){
+    const isMobile=CW<500;
+    for(let i=0;i<=steps;i++){
+      const v=Math.round(maxVal*i/steps);
+      const y=pad.t+(CH-pad.t-pad.b)*(1-i/steps);
+      ctx.strokeStyle='#2a3560';ctx.lineWidth=.4;
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(CW-pad.r,y);ctx.stroke();
+      ctx.fillStyle='#7b89b0';ctx.font=`${isMobile?8:9}px system-ui`;ctx.textAlign='right';
+      ctx.fillText(v,pad.l-4,y+3);
+    }
+  }
+
+  function noData(ctx,CW,CH,msg){
+    ctx.fillStyle='#7b89b0';ctx.font='13px system-ui';ctx.textAlign='center';
+    ctx.fillText(msg||'Aguardando resultados...',CW/2,CH/2);
+  }
+
+  // 1. Linha — evolução acumulada
+  function drawLine(ctx,CW,CH){
+    if(gamesWithResult.length<1){noData(ctx,CW,CH);return;}
+    const isMobile=CW<500;
+    const pad={t:20,r:isMobile?60:90,b:24,l:40};
+    const gW=CW-pad.l-pad.r,gH=CH-pad.t-pad.b;
+
+    // Build X axis: by game or by round
+    let xPoints; // [{label, games:[]}]
+    if(roundFilter==='round'){
+      const roundMap={};
+      const roundOrder=[];
+      gamesWithResult.forEach(g=>{
+        const r=getGameRound(g);
+        if(!roundMap[r]){roundMap[r]=[];roundOrder.push(r);}
+        roundMap[r].push(g);
+      });
+      xPoints=roundOrder.map(r=>({label:r,games:roundMap[r]}));
+    } else {
+      xPoints=gamesWithResult.map(g=>({label:'J'+g.id,games:[g]}));
+    }
+
+    if(!xPoints.length){noData(ctx,CW,CH);return;}
+
+    // Compute series: cumulative points per xPoint
+    const series=ranked.map(s=>{
+      let cum=0;
+      const pts=xPoints.map(xp=>{
+        xp.games.forEach(g=>{
+          const pick=(state.picks?.[s.id]||{})[g.id];
+          const res=state.results?.[g.id];
+          if(pick&&res)cum+=calcPoints(pick,res,state.config,false);
+        });
+        return cum;
+      });
+      return{...s,pts};
+    });
+
+    const maxV=Math.max(...series.map(s=>s.pts[s.pts.length-1]||0),1);
+    const xS=xPoints.length>1?gW/(xPoints.length-1):gW;
+
+    // Grid
+    gridLines(ctx,CW,CH,pad,4,maxV);
+
+    // X axis labels
+    const step=Math.max(1,Math.floor(xPoints.length/10));
+    xPoints.forEach((xp,i)=>{
+      if(i%step!==0&&i!==xPoints.length-1)return;
+      const x=pad.l+i*xS;
+      ctx.fillStyle='#7b89b0';ctx.font=`${isMobile?7:8}px system-ui`;ctx.textAlign='center';
+      const lbl=roundFilter==='round'?xp.label.replace('Rodada ','R').replace('Libertadores','Lib').replace('Sul-Americana','Sul'):xp.label;
+      ctx.fillText(lbl,x,CH-6);
+    });
+
+    // Lines
+    series.forEach(s=>{
+      if(!s.pts.length)return;
+      ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.lineJoin='round';
+      ctx.beginPath();
+      s.pts.forEach((v,i)=>{
+        const x=pad.l+i*(xPoints.length>1?gW/(xPoints.length-1):0);
+        const y=pad.t+gH*(1-v/maxV);
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+      // Dots
+      s.pts.forEach((v,i)=>{
+        const x=pad.l+i*(xPoints.length>1?gW/(xPoints.length-1):0);
+        const y=pad.t+gH*(1-v/maxV);
+        ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();
+      });
+      // Label at end
+      const lx=pad.l+(s.pts.length-1)*(xPoints.length>1?gW/(xPoints.length-1):0)+5;
+      const ly=pad.t+gH*(1-s.pts[s.pts.length-1]/maxV);
+      ctx.fillStyle=s.color;ctx.font=`bold ${isMobile?8:9}px system-ui`;ctx.textAlign='left';
+      ctx.fillText(shortName(s.name),lx,ly+3);
+    });
+
+    // Hover regions: vertical bands
+    hoverDataRef.current['line']=[];
+    const bW=xPoints.length>1?gW/(xPoints.length-1):gW;
+    xPoints.forEach((xp,i)=>{
+      const x=pad.l+i*(xPoints.length>1?gW/(xPoints.length-1):0);
+      const sorted=[...series].sort((a,b)=>(b.pts[i]||0)-(a.pts[i]||0));
+      hoverDataRef.current['line'].push({
+        x:x-bW/2,y:pad.t,w:bW,h:gH,
+        title:xp.label,
+        lines:sorted.map(s=>({name:shortName(s.name),value:(s.pts[i]||0)+'pts',color:s.color}))
+      });
+    });
+  }
+
+
+  // 2. Barras — cravadas vs resultados
+  function drawBars(ctx,CW,CH){
+    const isMobile=CW<500;
+    const pad={t:28,r:12,b:isMobile?52:56,l:isMobile?28:38};
+    const gW=CW-pad.l-pad.r,gH=CH-pad.t-pad.b;
+    const data=ranked; // já ordenado por ranking
+    if(!data.length)return;
+    const maxV=Math.max(...data.map(d=>(d.exact||0)+(d.onlyWinner||0)),1);
+
+    // Cada jogador tem 2 barras lado a lado
+    const groupW=Math.max(isMobile?28:40,Math.min(isMobile?52:70,gW/data.length-6));
+    const bW=(groupW-2)/2; // cada barra ocupa metade do grupo
+    const gap=(gW-groupW*data.length)/(data.length+1);
+
+    // grid lines
+    for(let i=0;i<=4;i++){
+      const v=Math.round(maxV*i/4);
+      const y=pad.t+gH*(1-i/4);
+      ctx.strokeStyle='#2a3560';ctx.lineWidth=.4;
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gW,y);ctx.stroke();
+      ctx.fillStyle='#7b89b0';ctx.font=`${isMobile?8:9}px system-ui`;ctx.textAlign='right';
+      ctx.fillText(v,pad.l-4,y+3);
+    }
+
+    // legend
+    ctx.fillStyle='#00c853';ctx.fillRect(pad.l,6,10,8);
+    ctx.fillStyle='#c8d0e0';ctx.font='9px system-ui';ctx.textAlign='left';ctx.fillText(' Cravadas',pad.l+12,14);
+    ctx.fillStyle='#ffd600';ctx.fillRect(pad.l+90,6,10,8);
+    ctx.fillStyle='#c8d0e0';ctx.fillText(' Resultados',pad.l+102,14);
+
+    data.forEach((d,i)=>{
+      const gx=pad.l+gap*(i+1)+groupW*i;
+      const cx=gx+groupW/2; // centro do grupo para o nome
+
+      const hE=(d.exact||0)/maxV*gH;
+      const hW=(d.onlyWinner||0)/maxV*gH;
+      const baseY=pad.t+gH;
+
+      // Barra verde (cravadas) — esquerda
+      if(hE>0){
+        ctx.fillStyle='#00c85355';ctx.fillRect(gx,baseY-hE,bW,hE);
+        ctx.strokeStyle='#00c853';ctx.lineWidth=1.5;ctx.strokeRect(gx,baseY-hE,bW,hE);
+        ctx.fillStyle='#00c853';ctx.font=`bold ${isMobile?9:10}px system-ui`;ctx.textAlign='center';
+        ctx.fillText(d.exact,gx+bW/2,baseY-hE-4);
+      }
+
+      // Barra amarela (resultados) — direita
+      if(hW>0){
+        ctx.fillStyle='#ffd60055';ctx.fillRect(gx+bW+2,baseY-hW,bW,hW);
+        ctx.strokeStyle='#ffd600';ctx.lineWidth=1.5;ctx.strokeRect(gx+bW+2,baseY-hW,bW,hW);
+        ctx.fillStyle='#ffd600';ctx.font=`bold ${isMobile?9:10}px system-ui`;ctx.textAlign='center';
+        ctx.fillText(d.onlyWinner,gx+bW+2+bW/2,baseY-hW-4);
+      }
+
+      // Nome em duas linhas
+      const parts=d.name.trim().split(' ').filter(Boolean);
+      const first=parts[0]||'';
+      const last=parts.length>1?parts[parts.length-1]:'';
+      const maxLen=isMobile?6:8;
+      const f=first.length>maxLen?first.slice(0,maxLen-1)+'…':first;
+      const l=last.length>maxLen?last.slice(0,maxLen-1)+'…':last;
+      ctx.fillStyle='#c8d0e0';ctx.font=`${isMobile?8:9}px system-ui`;ctx.textAlign='center';
+      ctx.fillText(f,cx,CH-pad.b+13);
+      if(l){ctx.fillStyle='#4a5580';ctx.fillText(l,cx,CH-pad.b+24);}
+    });
+  }
+
+  // 3. Mapa de calor
+  function drawHeat(ctx,CW,CH){
+    const games=gamesWithResult.slice(-20);
+    if(!games.length){noData(ctx,CW,CH,'Nenhum resultado ainda');return;}
+    const pT=28;
+    const isMobileH=CW<480;
+    const pLH=isMobileH?72:92;
+    const cW=Math.max(14,Math.min(isMobileH?22:34,(CW-pLH-8)/games.length));
+    const cH=32;
+    ctx.fillStyle='#7b89b0';ctx.font='8px system-ui';ctx.textAlign='center';
+    games.forEach((g,i)=>{
+      const cx=pLH+i*cW+cW/2;
+      if(g.home&&g.away&&cW>=20){
+        ctx.font=`${Math.min(cW-4,16)}px serif`;ctx.textAlign='center';
+        ctx.fillText(flag(g.home),cx,12);
+        ctx.fillText(flag(g.away),cx,26);
+      } else {
+        ctx.fillStyle='#7b89b0';ctx.font='8px system-ui';ctx.textAlign='center';
+        ctx.fillText('J'+g.id,cx,18);
+      }
+    });
+    const heatSorted=[...ranked].sort((a,b)=>b.total-a.total);
+    heatSorted.forEach((p,pi)=>{
+      const y=pT+pi*cH;
+      const nm=shortName(p.name);
+      const nmTrunc=nm.length>10?nm.slice(0,9)+'…':nm;
+      ctx.fillStyle='#c8d0e0';ctx.font='9px system-ui';ctx.textAlign='right';
+      ctx.fillText(nmTrunc,pLH-5,y+cH/2-1);
+      const pts=p.total||0;
+      ctx.fillStyle=pts>0?'#ffd60099':'#3a4570';ctx.font='bold 8px system-ui';
+      ctx.fillText(pts+'pts',pLH-5,y+cH/2+9);
+      games.forEach((g,gi)=>{
+        const pick=(state.picks?.[p.id]||{})[g.id];
+        const res=state.results?.[g.id];
+        const pts=pick&&res?calcPoints(pick,res,state.config,false):null;
+        let bg='#131929';
+        if(pts===null)bg='#1c2540';
+        else if(pts>=10)bg='#00c85344';
+        else if(pts>0)bg='#ffd60033';
+        else bg='#ff3d5733';
+        const cx=pLH+gi*cW,cy=y;
+        ctx.fillStyle=bg;ctx.fillRect(cx+1,cy+1,cW-2,cH-2);
+        ctx.strokeStyle='#2a3560';ctx.lineWidth=.4;ctx.strokeRect(cx+1,cy+1,cW-2,cH-2);
+        if(pts!==null){
+          ctx.fillStyle=pts>=10?'#00c853':pts>0?'#ffd600':'#ff3d57';
+          ctx.font='bold 9px system-ui';ctx.textAlign='center';
+          ctx.fillText(pts,cx+cW/2,cy+cH/2+3);
+        } else {
+          ctx.fillStyle='#2a3560';ctx.font='9px system-ui';ctx.textAlign='center';
+          ctx.fillText('–',cx+cW/2,cy+cH/2+3);
+        }
+      });
+    });
+    const ly=CH-12;
+    [['Cravada','#00c853'],['Resultado','#ffd600'],['Errou','#ff3d57'],['S/palpite','#2a3560']].forEach(([l,c],i)=>{
+      const lx=pLH+i*(isMobileH?70:95);
+      ctx.fillStyle=c;ctx.fillRect(lx,ly-8,9,7);
+      ctx.fillStyle='#c8d0e0';ctx.font='8px system-ui';ctx.textAlign='left';
+      ctx.fillText(l,lx+12,ly);
+    });
+  }
+
+  // 4. Distribuição palpites — último jogo travado
+  function drawDist(ctx,CW,CH){
+    const N=5;
+    const recentGames=gamesWithResult.slice(-N);
+    if(!recentGames.length){noData(ctx,CW,CH,'Nenhum jogo com resultado');return;}
+    const isMobile=CW<500;
+
+    // Each game gets a column
+    const colW=Math.floor(CW/recentGames.length);
+    const COLORS_D=['#ffd600','#00c853','#1e88e5','#ff3d57','#ab47bc','#ff7043','#26c6da'];
+
+    // Header
+    ctx.fillStyle='#7b89b0';ctx.font=`bold ${isMobile?9:10}px system-ui`;ctx.textAlign='center';
+    recentGames.forEach((g,gi)=>{
+      const cx=gi*colW+colW/2;
+      ctx.fillStyle='#c8d0e0';
+      ctx.fillText(g.home.split(' ')[0]+'×'+g.away.split(' ')[0],cx,14);
+      ctx.fillStyle='#7b89b0';ctx.font=`${isMobile?8:9}px system-ui`;
+      ctx.fillText('J'+g.id,cx,25);
+    });
+
+    recentGames.forEach((g,gi)=>{
+      const cx=gi*colW;
+      // Build freq
+      const freq={};const pickPlayers={};
+      state.players.forEach(p=>{
+        const pick=(state.picks?.[p.id]||{})[g.id];
+        if(!pick||pick.home===''||pick.home===undefined||isNaN(parseInt(pick.home)))return;
+        const k=pick.home+'×'+pick.away;
+        freq[k]=(freq[k]||0)+1;
+        if(!pickPlayers[k])pickPlayers[k]=[];
+        pickPlayers[k].push(shortName(p.name).split(' ')[0]);
+      });
+      const total=Object.values(freq).reduce((a,b)=>a+b,0);
+      const entries=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+      if(!entries.length)return;
+
+      const res=state.results?.[g.id];
+      const resultStr=res?res.home+'×'+res.away:'';
+      const startY=35;
+      const rowH=Math.min(38,Math.max(26,(CH-startY-10)/entries.length));
+      const barMaxW=colW*0.38;
+
+      // Result
+      ctx.fillStyle='#00c853';ctx.font=`bold ${isMobile?10:11}px system-ui`;ctx.textAlign='center';
+      ctx.fillText('✓ '+resultStr,cx+colW/2,startY+10);
+
+      entries.forEach(([k,v],i)=>{
+        const col=COLORS_D[i%COLORS_D.length];
+        const y=startY+16+i*rowH;
+        const bW=(v/total)*barMaxW;
+        // bar
+        ctx.fillStyle=col+'33';ctx.fillRect(cx+4,y,bW,rowH-6);
+        ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.strokeRect(cx+4,y,bW,rowH-6);
+        // score
+        ctx.fillStyle='#fff';ctx.font=`bold ${isMobile?10:11}px system-ui`;ctx.textAlign='left';
+        ctx.fillText(k,cx+7,y+rowH/2+2);
+        // pct
+        ctx.fillStyle=col;ctx.font=`${isMobile?8:9}px system-ui`;
+        ctx.fillText(Math.round(v/total*100)+'%',cx+barMaxW+8,y+rowH/2+2);
+        // names (short)
+        const names=pickPlayers[k].join(', ');
+        ctx.fillStyle='#4a5580';ctx.font=`${isMobile?7:8}px system-ui`;
+        const maxNW=colW-barMaxW-20;
+        let disp=names;
+        while(ctx.measureText(disp).width>maxNW&&disp.length>4)
+          disp=disp.slice(0,disp.lastIndexOf(','))+'…';
+        ctx.fillText(disp,cx+barMaxW+8,y+rowH/2+12);
+      });
+
+      // Divider between columns
+      if(gi<recentGames.length-1){
+        ctx.strokeStyle='#2a3560';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo((gi+1)*colW,30);ctx.lineTo((gi+1)*colW,CH-5);ctx.stroke();
+      }
+    });
+
+    // Hover regions
+    hoverDataRef.current['dist']=[];
+    recentGames.forEach((g,gi)=>{
+      const res=state.results?.[g.id];
+      hoverDataRef.current['dist'].push({
+        x:gi*colW,y:0,w:colW,h:CH,
+        text:'J'+g.id+' '+g.home+'×'+g.away+(res?' | Resultado: '+res.home+'×'+res.away:'')
+      });
+    });
+  }
+
+  // 5. Distância para o líder
+  function drawGap(ctx,CW,CH){
+    if(gamesWithResult.length<2){noData(ctx,CW,CH);return;}
+    const pad={t:14,r:16,b:32,l:40};
+    const gW=CW-pad.l-pad.r,gH=CH-pad.t-pad.b;
+    const cumByPlayer=ranked.map(p=>{
+      let cum=0;
+      return gamesWithResult.map(g=>{
+        const r=state.results?.[g.id];
+        const pick=(state.picks?.[p.id]||{})[g.id];
+        cum+=(calcPoints(pick,r,state.config,false)||0);
+        return cum;
+      });
+    });
+    const gaps=ranked.map((p,pi)=>({...p,pts:gamesWithResult.map((_,gi)=>{
+      const leader=Math.max(...cumByPlayer.map(c=>c[gi]||0));
+      return leader-(cumByPlayer[pi][gi]||0);
+    })}));
+    const maxG=Math.max(...gaps.flatMap(s=>s.pts),1);
+    const xS=gamesWithResult.length>1?gW/(gamesWithResult.length-1):gW;
+    gridLines(ctx,CW,CH,pad,5,maxG);
+    ctx.fillStyle='#7b89b0';ctx.font='8px system-ui';ctx.textAlign='center';
+    gamesWithResult.forEach((g,i)=>ctx.fillText('J'+g.id,pad.l+i*xS,CH-6));
+    // Líder
+    ctx.fillStyle='#00c853';ctx.font='bold 9px system-ui';ctx.textAlign='left';
+    ctx.fillText('Líder = 0pts atrás',pad.l+4,pad.t+10);
+    gaps.forEach(s=>{
+      if(s.pts.every(v=>v===0))return;
+      ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.lineJoin='round';ctx.setLineDash([4,3]);
+      ctx.beginPath();
+      s.pts.forEach((v,i)=>{const x=pad.l+i*xS,y=pad.t+gH*(v/maxG);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+      ctx.stroke();ctx.setLineDash([]);
+    });
+    // Hover for gap chart
+    hoverDataRef.current['gap']=[];
+    const gapXS=gamesWithResult.length>1?gW/(gamesWithResult.length-1):gW;
+    const leaderPts=cumByPlayer[0]||[];
+    gamesWithResult.forEach((g,i)=>{
+      const leader=leaderPts[i]||0;
+      const lines=ranked.map((p,pi)=>{
+        const pts=cumByPlayer[pi]?.[i]||0;
+        const diff=leader-pts;
+        return{name:shortName(p.name),value:diff===0?'🥇 Líder':'-'+diff+'pts',color:p.color};
+      }).sort((a,b)=>{
+        const da=parseInt(a.value)||0,db=parseInt(b.value)||0;
+        return da-db;
+      });
+      hoverDataRef.current['gap'].push({
+        x:pad.l+i*gapXS-gapXS/2,y:pad.t,w:gapXS,h:gH,
+        title:'J'+g.id+' — Distância para o líder',
+        lines
+      });
+    });
+  }
+
+  // 6. Forma recente — últimos 5 jogos
+  function drawForm(ctx,CW,CH){
+    const N=5;const recent=gamesWithResult.slice(-N);
+    if(!recent.length){noData(ctx,CW,CH);return;}
+    const pad={t:24,r:12,b:56,l:40};
+    const gW=CW-pad.l-pad.r,gH=CH-pad.t-pad.b;
+    const data=ranked.map(p=>{
+      const pts=recent.map(g=>{
+        const r=state.results?.[g.id];
+        const pick=(state.picks?.[p.id]||{})[g.id];
+        return calcPoints(pick,r,state.config,false)||0;
+      });
+      return{...p,total:pts.reduce((a,b)=>a+b,0),pts};
+    }).sort((a,b)=>b.total-a.total);
+    const maxV=Math.max(...data.map(d=>d.total),1);
+    const bW=Math.min(50,gW/data.length-6);
+    const gap=(gW-bW*data.length)/(data.length+1);
+    for(let i=0;i<=4;i++){
+      const v=Math.round(maxV*i/4);
+      const y=pad.t+gH*(1-i/4);
+      ctx.strokeStyle='#2a3560';ctx.lineWidth=.4;
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+gW,y);ctx.stroke();
+      ctx.fillStyle='#7b89b0';ctx.font='9px system-ui';ctx.textAlign='right';
+      ctx.fillText(v,pad.l-4,y+3);
+    }
+    ctx.fillStyle='#7b89b0';ctx.font='9px system-ui';ctx.textAlign='center';
+    ctx.fillText(`Últimos ${recent.length} jogo${recent.length!==1?'s':''}`,CW/2,12);
+    data.forEach((d,i)=>{
+      const x=pad.l+gap*(i+1)+bW*i;
+      const h=d.total/maxV*gH;
+      ctx.fillStyle=d.color+'66';ctx.fillRect(x,pad.t+gH-h,bW,h);
+      ctx.strokeStyle=d.color;ctx.lineWidth=1.5;ctx.strokeRect(x,pad.t+gH-h,bW,h);
+      if(d.total>0){
+        ctx.fillStyle=d.color;ctx.font='bold 10px system-ui';ctx.textAlign='center';
+        ctx.fillText(d.total,x+bW/2,pad.t+gH-h-4);
+      }
+      const nm=shortName(d.name);
+      ctx.fillStyle='#7b89b0';ctx.font='9px system-ui';ctx.textAlign='center';
+      ctx.fillText(nm.length>8?nm.slice(0,7)+'…':nm,x+bW/2,CH-24);
+      // mini dots por jogo
+      d.pts.forEach((pt,gi)=>{
+        const dc=pt>=10?'#00c853':pt>0?'#ffd600':'#ff3d57';
+        ctx.beginPath();ctx.arc(x+bW/2-8+gi*4,CH-14,2.5,0,Math.PI*2);
+        ctx.fillStyle=dc;ctx.fill();
+      });
+    });
+  }
+
+  // Force multiple redraws after mount and data changes
+  useEffect(()=>{
+    // On mount: try at 300ms, 800ms, 2000ms
+    const t1=setTimeout(()=>setTick(x=>x+1),300);
+    const t2=setTimeout(()=>setTick(x=>x+1),800);
+    const t3=setTimeout(()=>setTick(x=>x+1),2000);
+    return()=>{clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);};
+  },[]); // Only on mount
+
+  // Also redraw when results change
+  useEffect(()=>{
+    const t=setTimeout(()=>setTick(x=>x+1),200);
+    return()=>clearTimeout(t);
+  },[JSON.stringify(state.results)]);
+
+  useEffect(()=>{
+    const wrap=wrapRef.current;
+    if(!wrap)return;
+    function redraw(){
+      dc('line',drawLine);dc('bars',drawBars);dc('heat',drawHeat);
+      dc('dist',drawDist);dc('gap',drawGap);dc('form',drawForm);
+    }
+    const t1=setTimeout(redraw,50);
+    const t2=setTimeout(redraw,400);
+    const t3=setTimeout(redraw,1200);
+    const t4=setTimeout(redraw,3000);
+    // Observe both wrap and its parent for size changes
+    const ro=new ResizeObserver(()=>{clearTimeout(t1);redraw();});
+    ro.observe(wrap);
+    if(wrap.parentElement)ro.observe(wrap.parentElement);
+    // Also observe visibility
+    const io=new IntersectionObserver(entries=>{
+      if(entries[0]?.isIntersecting)redraw();
+    },{threshold:0.1});
+    io.observe(wrap);
+    return()=>{ro.disconnect();io.disconnect();clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);clearTimeout(t4);};
+  },[ranked,gamesWithResult,hiddenPlayers,phaseFilter,tick,roundFilter,state.players.length]);
+
+  // Charts that need horizontal scroll when many players: bars, form
+  const scrollCharts=new Set(['bars','form','heat','dist']);
+  const minBarWidth=52; // px per player
+  const minChartWidth=ranked.length*minBarWidth+80;
+
+  function handleMouseMove(key,e){
+    const canvas=refs[key]?.current;
+    if(!canvas)return;
+    const rect=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/(window.devicePixelRatio||1)/rect.width;
+    const x=(e.clientX-rect.left)*scaleX;
+    const y=(e.clientY-rect.top)*(canvas.height/(window.devicePixelRatio||1)/rect.height);
+    const regions=hoverDataRef.current[key]||[];
+    const hit=regions.find(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h);
+    if(hit)setTooltip({x:e.clientX,y:e.clientY,title:hit.title||'',lines:hit.lines||[]});
+    else setTooltip(null);
+  }
+
+  const card=(title,sub,key)=>(
+    <div className="card" style={{marginBottom:'1rem'}}>
+      <div style={{marginBottom:'.5rem'}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:'1rem',textTransform:'uppercase',letterSpacing:1,color:'#fff'}}>{title}</div>
+        {sub&&<div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{sub}</div>}
+      </div>
+      <div style={{background:'#0d1220',borderRadius:8,overflowX:scrollCharts.has(key)?'auto':'hidden',overflowY:'hidden',scrollbarWidth:'thin',scrollbarColor:'#2a3560 #0d1220'}}>
+        <div style={{minWidth:scrollCharts.has(key)?minChartWidth+'px':'100%'}}>
+          <canvas ref={refs[key]} style={{display:'block',width:'100%'}}
+            onMouseMove={e=>handleMouseMove(key,e)}
+            onMouseLeave={()=>setTooltip(null)}/>
+        </div>
+      </div>
+      {scrollCharts.has(key)&&ranked.length>8&&<div style={{fontSize:9,color:'#2a3560',textAlign:'right',marginTop:2,paddingRight:4}}>← deslize →</div>}
+    </div>
+  );
+
+  return(
+    <div ref={wrapRef} style={{position:'relative'}}>
+      {tooltip&&(
+        <div style={{position:'fixed',left:Math.min(tooltip.x+14,window.innerWidth-220),top:Math.max(8,tooltip.y-tooltip.lines.length*20-40),background:'#0d1220',border:'1px solid #3a4570',borderRadius:10,padding:'8px 12px',fontSize:12,color:'#fff',pointerEvents:'none',zIndex:999,boxShadow:'0 8px 24px #000a',minWidth:160}}>
+          <div style={{fontWeight:700,fontSize:11,color:'#7b89b0',marginBottom:5,letterSpacing:.3}}>{tooltip.title}</div>
+          {tooltip.lines.map((l,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+              <span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:l.color,flexShrink:0}}/>
+              <span style={{color:'#c8d0e0',fontSize:11}}>{l.name}</span>
+              <span style={{marginLeft:'auto',fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:l.color,paddingLeft:8}}>{l.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <h1 style={{marginBottom:'1rem'}}>Gráficos</h1>
+
+      {/* Stats cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:'1.25rem'}}>
+        {[
+          {label:'Jogos Restantes',val:remaining,color:'var(--yellow)'},
+          {label:'Jogos Pontuados',val:scored,color:'var(--green)'},
+          {label:'Pts em Disputa',val:ptsLeft,color:'#64b5f6'},
+          {label:'Pts Disputados',val:ptsDone,color:'var(--muted)'},
+          {label:'% Concluído',val:pct+'%',color:'var(--yellow)'},
+        ].map(({label,val,color})=>(
+          <div key={label} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'.7rem .5rem',textAlign:'center'}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.7rem',color,lineHeight:1}}>{val}</div>
+            <div style={{fontSize:8,color:'var(--muted)',marginTop:3,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,lineHeight:1.3}}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtro de fase */}
+      <div style={{display:'flex',gap:6,marginBottom:'1rem',flexWrap:'wrap'}}>
+        {[['all','🌐 Todos'],['group','⚽ Grupos'],['knockout','⚔️ Mata-Mata']].map(([val,label])=>(
+          <button key={val} onClick={()=>setPhaseFilter(val)}
+            style={{padding:'5px 14px',borderRadius:20,border:`1px solid ${phaseFilter===val?'var(--yellow)':'var(--border)'}`,background:phaseFilter===val?'#ffd60022':'var(--surface3)',color:phaseFilter===val?'var(--yellow)':'var(--muted)',fontSize:11,fontWeight:700,cursor:'pointer',transition:'all .15s',letterSpacing:.3}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtro de jogadores */}
+      <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'.75rem 1rem',marginBottom:'1rem'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+          <span style={{fontSize:11,color:'#fff',fontWeight:700,textTransform:'uppercase',letterSpacing:.5}}>👥 Jogadores nos Gráficos</span>
+          <div style={{display:'flex',gap:6}}>
+            <button onClick={()=>setHiddenPlayers(new Set())}
+              style={{background:'#00c85322',border:'1px solid #00c85344',borderRadius:6,padding:'3px 10px',fontSize:10,color:'var(--green)',fontWeight:700,cursor:'pointer'}}>
+              ✓ Todos
+            </button>
+            <button onClick={()=>setHiddenPlayers(new Set(allRanked.map(p=>p.id)))}
+              style={{background:'#ff3d5722',border:'1px solid #ff3d5744',borderRadius:6,padding:'3px 10px',fontSize:10,color:'var(--red)',fontWeight:700,cursor:'pointer'}}>
+              ✕ Nenhum
+            </button>
+          </div>
+        </div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+          {allRanked.map(p=>{
+            const hidden=hiddenPlayers.has(p.id);
+            return(
+              <button key={p.id} onClick={()=>togglePlayer(p.id)}
+                style={{display:'flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1px solid ${hidden?'var(--border)':p.color+'88'}`,background:hidden?'var(--surface3)':p.color+'18',cursor:'pointer',transition:'all .15s'}}>
+                <span style={{display:'inline-block',width:10,height:10,borderRadius:'50%',background:hidden?'#3a4570':p.color,flexShrink:0}}/>
+                <span style={{fontSize:12,color:hidden?'var(--muted)':p.color,fontWeight:hidden?400:600}}>{shortName(p.name)}</span>
+                {hidden&&<span style={{fontSize:10,color:'#ff3d57',marginLeft:2}}>✕</span>}
+              </button>
+            );
+          })}
+        </div>
+        {hiddenPlayers.size>0&&<div style={{fontSize:10,color:'var(--muted)',marginTop:6}}>{allRanked.length-hiddenPlayers.size} de {allRanked.length} jogadores visíveis</div>}
+      </div>
+
+      {/* Toggle por jogo / por rodada */}
+      <div style={{display:'flex',gap:5,marginBottom:'.5rem'}}>
+        {[['game','⚽ Por Jogo'],['round','📅 Por Rodada']].map(([val,label])=>(
+          <button key={val} onClick={()=>setRoundFilter(val)}
+            style={{padding:'3px 12px',borderRadius:20,border:'1px solid '+(roundFilter===val?'var(--yellow)':'var(--border)'),background:roundFilter===val?'#ffd60022':'var(--surface3)',color:roundFilter===val?'var(--yellow)':'var(--muted)',fontSize:10,fontWeight:700,cursor:'pointer'}}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {card('Evolução por Jogo','Pontuação acumulada de cada participante','line')}
+      {card('Acertos por Jogador','Verde = cravadas · Amarelo = resultados','bars')}
+      {card('Mapa de Calor','Verde = cravada · Amarelo = resultado · Vermelho = errou','heat')}
+      {card('Distribuição de Palpites','Palpites do último jogo com resultado','dist')}
+      {card('Distância para o Líder','Quantos pontos cada um está atrás do 1º','gap')}
+      {card('Forma Recente','Pontos nos últimos 5 jogos com mini-histórico','form')}
+    </div>
+  );
+}
+
+
+function GameCard({game,state,isAdmin,isGolden,lockTime,now,fmtDate,fmtCountdown}){
+  const res=state.results?.[game.id];
+  const isLockedG=isFinite(lockTime)&&now>=(lockTime);
+  const msToLock=lockTime-now;
+  const isKO=(state.knockoutGames||[]).some(kg=>kg.id===game.id);
+  const hasResult=res&&res.home!==''&&res.home!==undefined&&!isNaN(parseInt(res.home));
+  const borderColor=isGolden?'#ffd600':isLockedG&&!hasResult?'#ff980044':isLockedG&&hasResult?'#2a3560':'#1e88e533';
+  const bgColor=isGolden?'#ffd60008':isLockedG&&!hasResult?'#ff980008':isLockedG&&hasResult?'var(--surface2)':'#1e88e508';
+  return(
+    <div style={{background:bgColor,border:`1px solid ${borderColor}`,borderRadius:10,padding:'.75rem 1rem',marginBottom:8,transition:'all .3s'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'.5rem'}}>
+        <div>
+          <span style={{fontWeight:700,fontSize:14,color:isGolden?'#ffd600':'#fff'}}>
+            {game.home} × {game.away}
+          </span>
+          {isKO&&<span className="badge badge-yellow" style={{marginLeft:6,fontSize:9}}>{(()=>{const ph=(state.knockoutGames||[]).find(g=>g.id===game.id)?.phase;return ph==='LIB'?'Libertadores':ph==='SUL'?'Sul-Americana':ph==='TEST'?'Teste':'Mata-Mata';})()}</span>}
+        </div>
+        <div style={{textAlign:'right',flexShrink:0,marginLeft:8}}>
+          <div style={{fontSize:11,color:'var(--muted)'}}>{fmtDate(game)}</div>
+          {res&&res.home!==''&&<div style={{fontFamily:"'Bebas Neue'",fontSize:15,color:'var(--green)'}}>{res.home} × {res.away}</div>}
+          {!isLockedG&&isGolden&&msToLock>0&&(
+            <div style={{fontSize:11,fontWeight:700,color:'#ffd600',fontFamily:"'Bebas Neue'",letterSpacing:1}}>🔒 {fmtCountdown(msToLock)}</div>
+          )}
+          {isLockedG&&(!res||res.home==='')&&<div style={{fontSize:10,color:'var(--red)',fontWeight:700}}>🔒 Encerrado</div>}
+        </div>
+      </div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+        {state.players.map(p=>{
+          const pick=(state.picks?.[p.id]||{})[game.id];
+          const hasPick=pick?.home!==undefined&&pick?.away!==undefined&&pick.home!==''&&pick.away!==''&&!isNaN(parseInt(pick.home));
+          const pts=(isLockedG||isAdmin)&&hasPick&&res&&res.home!==''?calcPoints(pick,res,state.config,isKO):null;
+          const chipBg=pts!==null?(pts>=10?'#00c85318':pts>0?'#ffd60018':'#ff3d5718'):hasPick&&(isLockedG||isAdmin)?'#1c2540':'var(--surface3)';
+          const chipBorder=pts!==null?(pts>=10?'#00c85355':pts>0?'#ffd60055':'#ff3d5755'):hasPick&&(isLockedG||isAdmin)?'#3a4570':'var(--border)';
+          const scoreColor=pts!==null?(pts>=10?'#00c853':pts>0?'#ffd600':'#ff3d57'):hasPick&&(isLockedG||isAdmin)?'var(--yellow)':'var(--muted)';
+          return(
+            <div key={p.id} style={{background:chipBg,border:`1px solid ${chipBorder}`,borderRadius:7,padding:'4px 10px',display:'flex',alignItems:'center',gap:5}}>
+              <span style={{fontSize:10,color:'var(--muted)'}}>{shortName(p.name)}</span>
+              {(isLockedG||isAdmin)
+                ?<span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:hasPick?scoreColor:'var(--surface3)'}}>
+                  {hasPick&&pick.home!==''&&pick.away!==''?`${pick.home}×${pick.away}`:'–'}
+                  {pts!==null&&<span style={{fontSize:9}}> ({pts}pts)</span>}
+                </span>
+                :<span style={{fontSize:11,color:hasPick?'#00c853':'var(--surface3)'}}>{hasPick?'✓':'–'}</span>
+              }
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProximosJogos({state,session}){
+  const lockMin=state.config?.lockBefore||60;
+  const [serverNow,setServerNow]=React.useState(Date.now());
+  const [timerTick,setTimerTick]=React.useState(0);
+
+  useEffect(()=>{
+    fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`,{
+      headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Accept':'application/vnd.github+json'}
+    }).then(r=>{
+      const d=r.headers.get('Date');
+      if(d) setServerNow(new Date(d).getTime());
+    }).catch(()=>{});
+    const iv=setInterval(()=>setTimerTick(t=>t+1),1000);
+    return()=>clearInterval(iv);
+  },[]);
+
+  const now=serverNow+timerTick*1000;
+
+  const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])]
+    .filter(g=>g.home&&g.away&&g.date&&g.time)
+    .sort((a,b)=>new Date(`${a.date}T${a.time}:00-03:00`)-new Date(`${b.date}T${b.time}:00-03:00`));
+
+  function gameTime(g){return new Date(`${g.date}T${g.time}:00-03:00`).getTime();}
+  function lockTimeF(g){return gameTime(g)-lockMin*60000;}
+  function isLockedNow(g){return now>=lockTimeF(g);}
+
+  const nextUnlocked=allGames.find(g=>!isLockedNow(g));
+  const nextLockTime=nextUnlocked?lockTimeF(nextUnlocked):null;
+
+  const in24h=allGames.filter(g=>!isLockedNow(g)&&lockTimeF(g)-now<=24*3600*1000);
+  const goldenIds=new Set(
+    in24h.length>0 ? in24h.map(g=>g.id) : (nextUnlocked?[nextUnlocked.id]:[])
+  );
+
+  function fmtCountdown(ms){
+    if(ms<=0)return'00:00:00';
+    const h=Math.floor(ms/3600000);
+    const m=Math.floor((ms%3600000)/60000);
+    const s=Math.floor((ms%60000)/1000);
+    return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function fmtDate(g){
+    if(!g.date)return'';
+    return g.date.slice(8)+'/'+g.date.slice(5,7)+' '+g.time;
+  }
+
+  const isAdmin=session?.type==='admin';
+  const upcoming=allGames.filter(g=>!isLockedNow(g));
+  const lockedGames=[...allGames].filter(g=>isLockedNow(g)).reverse();
+
+  return(
+    <div>
+      <div className="flex-between" style={{marginBottom:'1rem',flexWrap:'wrap',gap:8}}>
+        <h1>Jogos</h1>
+        <span className="badge badge-green">💰 R$ {(state.players.length*50).toLocaleString('pt-BR')} no pote</span>
+      </div>
+
+      <div style={{position:'sticky',top:'var(--header-h,56px)',zIndex:90,background:'#0d1220ee',backdropFilter:'blur(8px)',borderBottom:'1px solid #2a3560',marginBottom:'1rem',marginLeft:'-1.25rem',marginRight:'-1.25rem'}}>
+        {nextLockTime&&(
+          <div style={{padding:'.5rem 1.25rem',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,borderBottom:'1px solid #ffd60022'}}>
+            <span style={{fontSize:12,color:'var(--muted)'}}>🔒 Próximo fechamento em:</span>
+            <span style={{fontFamily:"'Bebas Neue'",fontSize:'1.4rem',color:'#ffd600',letterSpacing:2}}>
+              {fmtCountdown(nextLockTime-now)}
+            </span>
+          </div>
+        )}
+        <div style={{display:'flex',gap:5,padding:'.4rem 1.25rem'}}>
+          {[['#sec-andamento','⚽ Andamento','#ff9800'],['#sec-proximos','⏳ Próximos','#64b5f6'],['#sec-encerrados','✅ Encerrados','#00c853']].map(([href,label,color])=>(
+            <a key={href} href={href}
+              onClick={e=>{e.preventDefault();document.querySelector(href)?.scrollIntoView({behavior:'smooth',block:'start'});}}
+              style={{fontSize:10,fontWeight:700,color,textDecoration:'none',padding:'3px 10px',borderRadius:20,border:'1px solid '+color+'55',background:color+'11',letterSpacing:.3,transition:'all .15s',whiteSpace:'nowrap'}}>
+              {label}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {(()=>{
+        const inProgress=lockedGames.filter(g=>!state.results?.[g.id]||state.results[g.id].home===''||state.results[g.id].home===undefined);
+        const finished=lockedGames.filter(g=>state.results?.[g.id]&&state.results[g.id].home!==''&&state.results[g.id].home!==undefined&&!isNaN(parseInt(state.results[g.id].home)));
+        return(
+          <>
+            {inProgress.length>0&&(
+              <div id="sec-andamento" style={{marginBottom:'1.5rem'}}>
+                <div className="group-header" style={{marginBottom:'.75rem',borderLeftColor:'#ff9800'}}>
+                  <h2 style={{fontSize:'.9rem',color:'#ff9800'}}>⚽ Em Andamento — aguardando resultado</h2>
+                </div>
+                {inProgress.map(g=><GameCard key={g.id} game={g} state={state} isAdmin={isAdmin} isGolden={false} lockTime={lockTimeF(g)} now={now} fmtDate={fmtDate} fmtCountdown={fmtCountdown}/>)}
+              </div>
+            )}
+            {upcoming.length>0&&(
+              <div id="sec-proximos" style={{marginBottom:'1.5rem'}}>
+                <div className="group-header" style={{marginBottom:'.75rem',borderLeftColor:'#1e88e5'}}>
+                  <h2 style={{fontSize:'.9rem',color:'#64b5f6'}}>⏳ Próximos Jogos</h2>
+                </div>
+                {upcoming.map(g=><GameCard key={g.id} game={g} state={state} isAdmin={isAdmin} isGolden={goldenIds.has(g.id)} lockTime={lockTimeF(g)} now={now} fmtDate={fmtDate} fmtCountdown={fmtCountdown}/>)}
+              </div>
+            )}
+            {finished.length>0&&(
+              <div id="sec-encerrados">
+                <div className="group-header" style={{marginBottom:'.75rem',borderLeftColor:'#00c853'}}>
+                  <h2 style={{fontSize:'.9rem',color:'#00c853'}}>✅ Encerrados — palpites revelados</h2>
+                </div>
+                {finished.map(g=><GameCard key={g.id} game={g} state={state} isAdmin={isAdmin} isGolden={false} lockTime={lockTimeF(g)} now={now} fmtDate={fmtDate} fmtCountdown={fmtCountdown}/>)}
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {upcoming.length===0&&lockedGames.length===0&&(
+        <div className="empty"><div className="empty-icon">📋</div><p>Nenhum jogo configurado ainda.</p></div>
+      )}
+    </div>
+  );
+}
+
+function Regulamento(){
+  return(
+    <div>
+      <h1 style={{marginBottom:'1.25rem'}}>Regulamento</h1>
+      <div className="card">
+        <div className="reg-section">
+          <h2>Sistema de Pontuação</h2>
+          <p>Para cada jogo você faz um palpite de placar. No ranking aparecem as colunas <strong style={{color:'#00c853'}}>🎯 Cravada</strong> (10pts), <strong style={{color:'#ffd600'}}>👍 Resultado</strong> (5pts) e <strong style={{color:'#ab47bc'}}>🌟 Extras</strong> (apostas de campeão, vice, 3º e artilheiro).</p>
+          <table className="reg-table">
+            <thead><tr><th>Tipo de Acerto</th><th>Descrição</th><th>Pontos</th></tr></thead>
+            <tbody>
+              <tr><td><strong style={{color:'#00c853'}}>🎯 Cravada</strong></td><td>Acertou o placar exato. Ex: apostou 2×1 e deu 2×1</td><td style={{color:'#ffd600',fontWeight:700}}>10</td></tr>
+              <tr><td><strong style={{color:'#ffd600'}}>👍 Resultado</strong></td><td>Acertou quem venceu ou que foi empate, mas errou o placar</td><td style={{color:'#ffd600',fontWeight:700}}>5</td></tr>
+              <tr><td>❌ Nenhum acerto</td><td>Errou quem venceu ou errou se foi empate</td><td>0</td></tr>
+            </tbody>
+          </table>
+          <div className="alert alert-info" style={{fontSize:12}}>⚠️ Vale apenas o placar do tempo regular (90 min) em todas as fases — prorrogação e pênaltis não contam.</div>
+        </div>
+        </div>
+        <div className="reg-section">
+          <h2>Apostas Extras</h2>
+          <table className="reg-table">
+            <thead><tr><th>Aposta</th><th>Pontos</th></tr></thead>
+            <tbody>
+              <tr><td>🏆 Campeão</td><td style={{color:'#ffd600',fontWeight:700}}>15 pts</td></tr>
+              <tr><td>🥈 Vice-Campeão</td><td style={{color:'#ffd600',fontWeight:700}}>15 pts</td></tr>
+              <tr><td>🥉 Terceiro Lugar</td><td style={{color:'#ffd600',fontWeight:700}}>15 pts</td></tr>
+              <tr><td>⚽ Artilheiro da Copa</td><td style={{color:'#ffd600',fontWeight:700}}>15 pts</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="reg-section">
+          <h2>Prazos para Palpitar</h2>
+          <ul className="reg-list">
+            <li>Palpites devem ser feitos <strong>antes do início do jogo</strong></li>
+            <li>O sistema bloqueia automaticamente <strong>60 minutos antes do apito inicial</strong></li>
+            <li>Você pode alterar quantas vezes quiser até o bloqueio</li>
+            <li>Palpites futuros podem ser feitos com dias de antecedência</li>
+            <li>Se não palpitar antes do bloqueio, recebe <strong>0 pontos</strong> naquele jogo</li>
+          </ul>
+        </div>
+        <div className="reg-section">
+          <h2>Critérios de Desempate</h2>
+          <p style={{fontSize:13,color:'#c8d0e0',marginBottom:'.75rem'}}>Em caso de empate na pontuação total, o desempate segue esta hierarquia:</p>
+          <ol style={{paddingLeft:'1.2rem',fontSize:13,color:'#c8d0e0',lineHeight:2.2}}>
+            <li><strong>Mais cravadas</strong> — quem acertou mais placares exatos</li>
+            <li><strong>Mais resultados</strong> — quem acertou mais vencedores/empates</li>
+            <li><strong>Acertou o Campeão</strong> — quem apostou no campeão correto</li>
+            <li><strong>Acertou o Vice</strong> — quem apostou no vice correto</li>
+            <li><strong>Acertou o Artilheiro</strong> — quem apostou no artilheiro correto</li>
+          </ol>
+        </div>
+        <div className="reg-section">
+          <h2>Sistema de Premiação</h2>
+          <p>Cada participante contribui com <strong style={{color:'#ffd600'}}>R$ 50,00</strong> de taxa de inscrição. O prêmio total cresce conforme o número de participantes.</p>
+          <table className="reg-table">
+            <thead><tr><th>Posição</th><th>% do Prêmio</th><th>Exemplo (10 participantes)</th></tr></thead>
+            <tbody>
+              <tr><td>🥇 <strong>1º Lugar</strong></td><td style={{color:'#ffd600',fontWeight:700}}>60%</td><td style={{color:'#ffd600'}}>R$ 300,00</td></tr>
+              <tr><td>🥈 <strong>2º Lugar</strong></td><td style={{color:'#b0bec5',fontWeight:700}}>30%</td><td style={{color:'#b0bec5'}}>R$ 150,00</td></tr>
+              <tr><td>🥉 <strong>3º Lugar</strong></td><td style={{color:'#ff8a65',fontWeight:700}}>10%</td><td style={{color:'#ff8a65'}}>R$ 50,00</td></tr>
+            </tbody>
+          </table>
+          <p style={{fontSize:12,color:'var(--muted)'}}>O prêmio exato aparece no ranking conforme o número de participantes registrados.</p>
+          <h3>Rebaixamento</h3>
+          <ul className="reg-list">
+            <li>Os <strong>3 últimos colocados</strong> ficam marcados em vermelho no ranking</li>
+            <li>O rebaixamento é simbólico e serve para motivar a competição</li>
+          </ul>
+        </div>
+        <div className="reg-section">
+          <h2>Regras Especiais</h2>
+          <h3>Mata-Mata</h3>
+          <ul className="reg-list">
+            <li>Vale o placar do <strong>tempo regulamentar (90 min)</strong></li>
+            <li>Gols na prorrogação <strong>não contam</strong> para o palpite</li>
+            <li>Pênaltis <strong>não contam</strong> para o palpite</li>
+            <li>Pontuação igual à fase de grupos — sem dobrar</li>
+          </ul>
+          <h3>Jogos Adiados</h3>
+          <ul className="reg-list">
+            <li>Palpites já feitos continuam válidos</li>
+            <li>Alterações são permitidas até o início do jogo remarcado</li>
+            <li>Se o jogo for cancelado definitivamente, os palpites são anulados</li>
+          </ul>
+        </div>
+    </div>
+  );
+}
+
+function computeDetailedScores(state){
+  const{players,picks,results,config,knockoutGames=[]}=state;
+  const detailed={};
+  players.forEach(p=>{
+    let exact=0,onlyWinner=0,bonusPts=0;
+    let exactPts=0,owPts=0;
+    const processGame=(g,isKO)=>{
+      const res=results[g.id];
+      const pick=(picks[p.id]||{})[g.id];
+      if(!res||!pick)return;
+      const ph=parseInt(pick.home),pa=parseInt(pick.away);
+      const rh=parseInt(res.home),ra=parseInt(res.away);
+      if(isNaN(ph)||isNaN(pa)||isNaN(rh)||isNaN(ra))return;
+      const exactVal=config?.exactScore||10;
+      const winnerVal=config?.onlyWinner||5;
+      const pw=ph>pa?'H':ph<pa?'A':'D';
+      const rw=rh>ra?'H':rh<ra?'A':'D';
+      if(ph===rh&&pa===ra){exact++;exactPts+=exactVal;return;}
+      if(pw!==rw)return;
+      onlyWinner++;owPts+=winnerVal;
+    };
+    GROUP_GAMES.forEach(g=>processGame(g,false));
+    knockoutGames.forEach(g=>processGame(g,true));
+    function matchA(pick,finalVal){
+      if(!pick||!finalVal)return false;
+      const aliases=finalVal.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+      return aliases.includes(pick.trim().toLowerCase());
+    }
+    if(matchA(p.topScorer,state.finalTopScorer))bonusPts+=config.topScorer;
+    const bp=p.bonusPicks||{};
+    if(matchA(bp.champion,state.finalChampion))bonusPts+=config.champion;
+    if(matchA(bp.runnerUp,state.finalRunnerUp))bonusPts+=config.runnerUp;
+    if(matchA(bp.third,state.finalThird))bonusPts+=config.third;
+    const total=exactPts+owPts+bonusPts;
+    detailed[p.id]={total,exact,exactPts,onlyWinner,owPts,bonusPts};
+  });
+  return detailed;
+}
+
+function RankingView({state}){
+  const detailed=computeDetailedScores(state);
+  function matchA(pick,finalVal){
+    if(!pick||!finalVal)return false;
+    return finalVal.split(',').map(x=>x.trim().toLowerCase()).includes(pick.trim().toLowerCase());
+  }
+  const ranked=state.players.map(p=>({...p,...detailed[p.id]||{total:0,exact:0,onlyWinner:0,bonusPts:0}})).sort((a,b)=>{
+    if(b.total!==a.total)return b.total-a.total;
+    if(b.exact!==a.exact)return b.exact-a.exact;
+    if(b.onlyWinner!==a.onlyWinner)return b.onlyWinner-a.onlyWinner;
+    const aChamp=matchA((a.bonusPicks||{}).champion,state.finalChampion)?1:0;
+    const bChamp=matchA((b.bonusPicks||{}).champion,state.finalChampion)?1:0;
+    if(bChamp!==aChamp)return bChamp-aChamp;
+    const aRu=matchA((a.bonusPicks||{}).runnerUp,state.finalRunnerUp)?1:0;
+    const bRu=matchA((b.bonusPicks||{}).runnerUp,state.finalRunnerUp)?1:0;
+    if(bRu!==aRu)return bRu-aRu;
+    const aTs=matchA(a.topScorer,state.finalTopScorer)?1:0;
+    const bTs=matchA(b.topScorer,state.finalTopScorer)?1:0;
+    return bTs-aTs;
+  });
+  const max=ranked[0]?.total||1;
+  const n=ranked.length;
+  const pot=n*50;
+  const prize1=Math.round(pot*0.60);
+  const prize2=Math.round(pot*0.30);
+  const prize3=Math.round(pot*0.10);
+  const prizes=[prize1,prize2,prize3];
+
+  return(
+    <div>
+      <div className="flex-between" style={{marginBottom:'1rem',flexWrap:'wrap',gap:8}}>
+        <h1>Ranking</h1>
+        <div className="flex gap-md">
+          <span className="badge badge-yellow">{n} participantes</span>
+          <span className="badge badge-green">💰 R$ {pot.toLocaleString('pt-BR')}</span>
+        </div>
+      </div>
+
+      {/* Prize cards */}
+      {n>0&&(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:'1.25rem'}}>
+          {[
+            {label:'🥇 1º Lugar',val:prize1,color:'#ffd600',bg:'linear-gradient(135deg,#1a150088,#0d0e1a)',border:'#ffd60044'},
+            {label:'🥈 2º Lugar',val:prize2,color:'#b0bec5',bg:'linear-gradient(135deg,#16181888,#0d0e1a)',border:'#b0bec544'},
+            {label:'🥉 3º Lugar',val:prize3,color:'#ff8a65',bg:'linear-gradient(135deg,#1a0f0a88,#0d0e1a)',border:'#ff8a6544'},
+          ].map(({label,val,color,bg,border})=>(
+            <div key={label} style={{background:bg,border:`1px solid ${border}`,borderRadius:12,padding:'1rem .75rem',textAlign:'center'}}>
+              <div style={{fontSize:10,color:color+'aa',fontWeight:700,letterSpacing:.5,marginBottom:4,textTransform:'uppercase'}}>{label}</div>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.9rem',color,lineHeight:1,textShadow:`0 0 20px ${color}55`}}>
+                R$ {val.toLocaleString('pt-BR')}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Table header */}
+      <div className="ranking-header" style={{display:'grid',gridTemplateColumns:'44px 1fr 70px 70px 70px 90px',gap:6,padding:'6px 12px',borderBottom:'1px solid var(--border)',marginBottom:10}}>
+        {[
+          {label:'#',sub:''},
+          {label:'Jogador',sub:''},
+          {label:'🎯 Cravada',sub:'10pts cada'},
+          {label:'👍 Result.',sub:'5pts cada'},
+          {label:'🌟 Extras',sub:'C/V/3/A'},
+          {label:'Total',sub:''},
+        ].map((h,i)=>(
+          <div key={i} style={{textAlign:i===1?'left':'center'}}>
+            <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:.3}}>{h.label}</div>
+            {h.sub&&<div style={{fontSize:8,color:'#3a4570'}}>{h.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {ranked.length===0
+        ?<div className="empty"><div className="empty-icon">🏆</div><p>Nenhum participante ainda</p></div>
+        :(ranked.map((p,i)=>{
+          const isBottom3=n>=4&&i>=n-3;
+          const posColor=i===0?'#ffd600':i===1?'#b0bec5':i===2?'#ff8a65':isBottom3?'#ff3d57':'var(--muted)';
+          const rowBg=i===0?'linear-gradient(135deg,#ffd60018 0%,#ffd60008 100%)':i===1?'linear-gradient(135deg,#b0bec518 0%,#b0bec508 100%)':i===2?'linear-gradient(135deg,#ff8a6518 0%,#ff8a6508 100%)':isBottom3?'#ff3d5708':'var(--surface2)';
+          const rowBorder=i===0?'#ffd60055':i===1?'#b0bec544':i===2?'#ff8a6544':isBottom3?'#ff3d5722':'var(--border)';
+          const padding=i<3?'1.1rem 1.2rem':'.85rem 1rem';
+          const mb=i<3?10:6;
+
+          const bp=p.bonusPicks||{};
+          const chOk=matchA(bp.champion,state.finalChampion);
+          const rvOk=matchA(bp.runnerUp,state.finalRunnerUp);
+          const thOk=matchA(bp.third,state.finalThird);
+          const tsOk=matchA(p.topScorer,state.finalTopScorer);
+
+          const posEl=i===0?<div style={{fontSize:'1.8rem',lineHeight:1,textAlign:'center',filter:'drop-shadow(0 0 8px #ffd60088)'}}>🥇</div>
+            :i===1?<div style={{fontSize:'1.8rem',lineHeight:1,textAlign:'center',filter:'drop-shadow(0 0 6px #b0bec566)'}}>🥈</div>
+            :i===2?<div style={{fontSize:'1.8rem',lineHeight:1,textAlign:'center',filter:'drop-shadow(0 0 6px #ff8a6566)'}}>🥉</div>
+            :<span className="ranking-pos" style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.5rem',color:posColor,textAlign:'center',display:'block'}}>{i+1}</span>;
+
+          const totalSize=i===0?'2.8rem':i===1?'2.4rem':i===2?'2.2rem':'1.6rem';
+
+          return(
+            <div key={p.id} className="ranking-row-pad" style={{background:rowBg,border:`1px solid ${rowBorder}`,borderRadius:12,padding,marginBottom:mb}}>
+              <div className="ranking-grid" style={{display:'grid',gridTemplateColumns:'44px 1fr 70px 70px 70px 90px',gap:6,alignItems:'center'}}>
+                {posEl}
+                <div>
+                  <div className="ranking-name" style={{fontWeight:700,fontSize:i<3?16:14,color:isBottom3?'#ff8a80':'#fff'}}>{shortName(p.name)}</div>
+                  <div className="progress" style={{maxWidth:120,marginTop:4}}>
+                    <div className="progress-bar" style={{width:`${Math.round((p.total/max)*100)}%`,background:isBottom3?'#ff3d57':undefined}}/>
+                  </div>
+                </div>
+                <div style={{textAlign:'center'}}>
+                  {p.exactPts>0
+                    ?<><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:'#00c853',lineHeight:1}}>{p.exactPts}</div><div style={{fontSize:9,color:'var(--muted)'}}>{p.exact}×</div></>
+                    :<span style={{color:'#2a3560',fontSize:14}}>—</span>}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  {p.owPts>0
+                    ?<><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:'#ffd600',lineHeight:1}}>{p.owPts}</div><div style={{fontSize:9,color:'var(--muted)'}}>{p.onlyWinner}×</div></>
+                    :<span style={{color:'#2a3560',fontSize:14}}>—</span>}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  {p.bonusPts>0
+                    ?<div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,color:'#ab47bc',lineHeight:1}}>{p.bonusPts}</div>
+                    :<span style={{color:'#2a3560',fontSize:14}}>—</span>}
+                </div>
+                <div style={{textAlign:'center'}}>
+                  <div className="ranking-total" style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:totalSize,color:posColor,lineHeight:1,textShadow:i<3?`0 0 20px ${posColor}66`:undefined}}>{p.total}</div>
+                  {prizes[i]&&<div style={{fontSize:i<3?12:10,color:posColor,fontWeight:800,marginTop:2}}>R${prizes[i].toLocaleString('pt-BR')}</div>}
+                  {isBottom3&&!prizes[i]&&<div style={{fontSize:9,color:'var(--red)'}}>↓</div>}
+                </div>
+              </div>
+              {(()=>{
+                // Apostas extras só visíveis após fechamento do 1º jogo da Copa
+                const firstCopa=[...GROUP_GAMES].filter(g=>g.group!=='LIB'&&g.group!=='SUL'&&g.group!=='TEST').sort((a,b)=>new Date(a.date+'T'+a.time+':00-03:00')-new Date(b.date+'T'+b.time+':00-03:00'))[0];
+                const bonusRevealed=firstCopa?Date.now()>=new Date(firstCopa.date+'T'+firstCopa.time+':00-03:00').getTime():false;
+                const firstDate=firstCopa?new Date(firstCopa.date+'T'+firstCopa.time+':00-03:00').toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+                if(!bonusRevealed){
+                  return(
+                    <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid var(--border)'}}>
+                      <span style={{fontSize:10,color:'#3a4570',fontStyle:'italic'}}>🔒 Apostas extras visíveis a partir de {firstDate}</span>
+                    </div>
+                  );
+                }
+                if(!(bp.champion||bp.runnerUp||bp.third||p.topScorer))return null;
+                return(
+                  <div style={{display:'flex',flexWrap:'wrap',gap:5,marginTop:8,paddingTop:8,borderTop:'1px solid var(--border)'}}>
+                    {bp.champion&&<span style={{fontSize:11,background:chOk?'#00c85322':'var(--surface3)',border:'1px solid '+(chOk?'#00c85355':'var(--border)'),borderRadius:5,padding:'2px 7px',color:chOk?'#00c853':'var(--muted)'}}>🏆 Campeão: {bp.champion}{chOk?' ✓':''}</span>}
+                    {bp.runnerUp&&<span style={{fontSize:11,background:rvOk?'#00c85322':'var(--surface3)',border:'1px solid '+(rvOk?'#00c85355':'var(--border)'),borderRadius:5,padding:'2px 7px',color:rvOk?'#00c853':'var(--muted)'}}>🥈 Vice: {bp.runnerUp}{rvOk?' ✓':''}</span>}
+                    {bp.third&&<span style={{fontSize:11,background:thOk?'#00c85322':'var(--surface3)',border:'1px solid '+(thOk?'#00c85355':'var(--border)'),borderRadius:5,padding:'2px 7px',color:thOk?'#00c853':'var(--muted)'}}>🥉 3º: {bp.third}{thOk?' ✓':''}</span>}
+                    {p.topScorer&&<span style={{fontSize:11,background:tsOk?'#00c85322':'var(--surface3)',border:'1px solid '+(tsOk?'#00c85355':'var(--border)'),borderRadius:5,padding:'2px 7px',color:tsOk?'#00c853':'var(--muted)'}}>⚽ Artilheiro: {p.topScorer}{tsOk?' ✓':''}</span>}
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        }))
+      }
+      {n>=4&&<div style={{fontSize:11,color:'var(--red)',textAlign:'center',marginTop:8,opacity:.7}}>↓ Os 3 últimos são rebaixados</div>}
+    </div>
+  );
+}
+
+function PlayerView({state,setState,onSave,saving,playerId}){
+  const player=state.players.find(p=>p.id===playerId);
+  if(!player)return<div className="empty"><div className="empty-icon">👤</div><p>Jogador não encontrado</p></div>;
+  const[tab,setTab]=useState('group');
+  const[dirty,setDirty]=useState(false);
+  const[serverNow,setServerNow]=useState(Date.now());
+  const[timerTick,setTimerTick]=useState(0);
+  const myPicks=state.picks[playerId]||{};
+
+  useEffect(()=>{
+    fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`,{
+      headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Accept':'application/vnd.github+json'}
+    }).then(r=>{const d=r.headers.get('Date');if(d)setServerNow(new Date(d).getTime());}).catch(()=>{});
+    const iv=setInterval(()=>setTimerTick(t=>t+1),1000);
+    return()=>clearInterval(iv);
+  },[]);
+
+  const now=serverNow+timerTick*1000;
+  const lockMin=state.config?.lockBefore||60;
+
+  function lockTime(g){
+    if(!g.date||!g.time)return Infinity;
+    const dt=new Date(`${g.date}T${g.time}:00-03:00`);
+    if(isNaN(dt.getTime()))return Infinity;
+    return dt.getTime()-lockMin*60000;
+  }
+  function isLockedNowP(g){if(!g.date||!g.time)return false;const lt=lockTime(g);if(isNaN(lt))return false;return now>=lt;}
+
+  function fmtCountdownP(ms){
+    if(ms<=0)return'00:00:00';
+    const h=Math.floor(ms/3600000);
+    const m=Math.floor((ms%3600000)/60000);
+    const s=Math.floor((ms%60000)/1000);
+    return`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  const allGamesP=[...GROUP_GAMES,...(state.knockoutGames||[])].filter(g=>g.date&&g.time);
+  const nextUnlockedP=allGamesP.filter(g=>!isLockedNowP(g)).sort((a,b)=>lockTime(a)-lockTime(b))[0];
+  const nextLockTimeP=nextUnlockedP?lockTime(nextUnlockedP):null;
+  const in24hP=allGamesP.filter(g=>!isLockedNowP(g)&&lockTime(g)-now<=24*3600*1000);
+  const goldenIdsP=new Set(in24hP.length>0?in24hP.map(g=>g.id):(nextUnlockedP?[nextUnlockedP.id]:[]));
+  const scores=computeScores(state);
+  const myScore=scores[playerId]?.total||0;
+  const rank=Object.values(scores).filter(s=>s.total>myScore).length+1;
+  const bp=player.bonusPicks||{};
+
+  function updatePick(gid,pick){
+    setState(s=>({...s,picks:{...s.picks,[playerId]:{...(s.picks[playerId]||{}),[gid]:pick}}}));
+    setDirty(true);
+  }
+  function updateBonus(key,val){
+    setState(s=>({...s,players:s.players.map(p=>p.id===playerId?{...p,bonusPicks:{...(p.bonusPicks||{}),[key]:val}}:p)}));
+    setDirty(true);
+  }
+
+  return(
+    <div>
+      <div style={{marginBottom:'1rem'}}>
+        <h1 style={{fontSize:'1.3rem'}}>Olá, {shortName(player.name)}!</h1>
+        <p style={{color:'var(--muted)',fontSize:11,marginBottom:'.75rem'}}>Bolão do Batata · Copa 2026</p>
+        {(()=>{
+          const det=computeDetailedScores(state);
+          const myDet=det[playerId]||{exact:0,onlyWinner:0};
+          const allRanked=state.players.map(p=>({...p,...det[p.id]||{total:0}})).sort((a,b)=>b.total-a.total);
+          const myRankIdx=allRanked.findIndex(p=>p.id===playerId);
+          const above=myRankIdx>0?allRanked[myRankIdx-1]:null;
+          const gamesPlayed=Object.values(state.picks?.[playerId]||{}).filter(p=>p.home!==undefined&&p.home!=='').length;
+          const hits=myDet.exact+myDet.onlyWinner;
+          const gamesWithRes=[...GROUP_GAMES,...(state.knockoutGames||[])].filter(g=>{const r=state.results?.[g.id];return r&&r.home!==''&&!isNaN(parseInt(r.home));}).length;
+          const pct=gamesWithRes>0?Math.round(hits/gamesWithRes*100):0;
+          const distAbove=above?(above.total-myScore):null;
+          const cards=[
+            {val:myScore,label:'Pontos',color:'#fff',sub:''},
+            {val:'#'+(myRankIdx+1),label:'Ranking',color:'var(--yellow)',sub:myRankIdx===0?'Líder!':distAbove!==null?('-'+distAbove+'pts p/ '+shortName(above.name).split(' ')[0]):''},
+            {val:myDet.exact,label:'Cravadas',color:'#00c853',sub:'🎯'},
+            {val:myDet.onlyWinner,label:'Resultados',color:'#ffd600',sub:'👍'},
+            {val:gamesWithRes>0?pct+'%':'–',label:'% Acerto',color:'#64b5f6',sub:hits+'/'+gamesWithRes+' jogos'},
+          ];
+          return(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:5}}>
+              {cards.map((c,i)=>(
+                <div key={i} className="stat-card" style={{padding:'.65rem .5rem',textAlign:'center'}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.3rem',color:c.color,lineHeight:1}}>{c.val}</div>
+                  <div style={{fontSize:8,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:.3,marginTop:3,lineHeight:1.3}}>{c.label}</div>
+                  {c.sub&&<div style={{fontSize:8,color:'var(--muted)',marginTop:2,lineHeight:1.2,opacity:.7}}>{c.sub}</div>}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {(dirty||saving==='saving'||saving==='ok')&&(
+        <div style={{position:'fixed',bottom:'1.25rem',right:'1.25rem',zIndex:200,display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+          {dirty&&saving!=='saving'&&<span style={{fontSize:10,color:'#ff9800',fontWeight:700,background:'#0a0e1ae0',padding:'2px 8px',borderRadius:20,letterSpacing:.3}}>Alterações não salvas</span>}
+          <button onClick={()=>{onSave();setDirty(false)}} disabled={saving==='saving'}
+            style={{background:saving==='ok'?'var(--green)':dirty?'#ff9800':'var(--yellow)',color:'#0a0e1a',border:'none',borderRadius:10,padding:'9px 18px',fontSize:13,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',cursor:'pointer',boxShadow:'0 4px 20px #0008',transition:'all .2s',display:'flex',alignItems:'center',gap:6}}>
+            {saving==='saving'?<><span style={{display:'inline-block',width:14,height:14,border:'2px solid #0a0e1a44',borderTopColor:'#0a0e1a',borderRadius:'50%',animation:'spin .7s linear infinite'}}/> Salvando...</>
+            :saving==='ok'?'✓ Salvo!'
+            :'💾 Salvar'}
+          </button>
+        </div>
+      )}
+
+      {(()=>{
+        // Apostas extras travam no 1º jogo da Copa real (exclui jogos teste LIB/SUL)
+        const copaGames=GROUP_GAMES.filter(g=>g.group!=='LIB'&&g.group!=='SUL'&&g.group!=='TEST');
+        const firstGame=[...copaGames].sort((a,b)=>new Date(`${a.date}T${a.time}:00-03:00`)-new Date(`${b.date}T${b.time}:00-03:00`))[0];
+        const bonusLocked=firstGame?isLocked(firstGame,0):false;
+        return(
+          <div style={{background:bonusLocked?'var(--surface2)':'#1a2035',border:`1px solid ${bonusLocked?'var(--border)':'#ffd60044'}`,borderRadius:10,padding:'.75rem 1rem',marginBottom:'1rem'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'.5rem'}}>
+              <span style={{fontSize:12,fontWeight:700,color:bonusLocked?'var(--muted)':'var(--yellow)',textTransform:'uppercase',letterSpacing:.5}}>
+                🌟 Apostas Extras {bonusLocked?'🔒':''}
+              </span>
+              {!bonusLocked&&<span style={{fontSize:10,color:'var(--muted)'}}>Encerra no 1º jogo da Copa</span>}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+              {[
+                {key:'champion',label:'🏆 Campeão',pts:state.config.champion,list:SELECOES},
+                {key:'runnerUp',label:'🥈 Vice',pts:state.config.runnerUp,list:SELECOES},
+                {key:'third',label:'🥉 3º Lugar',pts:state.config.third,list:SELECOES},
+                {key:'topScorer',label:'⚽ Artilheiro',pts:state.config.topScorer,isTop:true,list:null},
+              ].map(({key,label,pts,isTop,list})=>{
+                const val=isTop?player.topScorer||'':bp[key]||'';
+                const onChange=isTop
+                  ?(v=>setState(s=>({...s,players:s.players.map(p=>p.id===playerId?{...p,topScorer:v}:p)})))
+                  :(v=>updateBonus(key,v));
+                return(
+                  <div key={key}>
+                    <label style={{fontSize:10,color:'var(--muted)',display:'flex',alignItems:'center',gap:4,marginBottom:2}}>
+                      {label} <span style={{color:'var(--yellow)',fontSize:9}}>+{pts}pts</span>
+                    </label>
+                    {list?(
+                      <select value={val} onChange={e=>{if(!bonusLocked){onChange(e.target.value);setDirty(true)}}}
+                        disabled={bonusLocked} style={{padding:'6px 8px',fontSize:12,marginBottom:0}}>
+                        <option value="">-- Selecione --</option>
+                        {list.map(s=><option key={s} value={s}>{s}</option>)}
+                      </select>
+                    ):(
+                      <input value={val} onChange={e=>{if(!bonusLocked){onChange(e.target.value);setDirty(true)}}}
+                        placeholder="Ex: Mbappé" disabled={bonusLocked}
+                        style={{padding:'6px 8px',fontSize:12,marginBottom:0}}/>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {nextLockTimeP&&(
+        <div style={{background:'#ffd60015',border:'1px solid #ffd60033',borderRadius:9,padding:'.6rem 1rem',marginBottom:'1rem',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:6}}>
+          <span style={{fontSize:12,color:'var(--muted)'}}>🔒 Próximo fechamento em:</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:'1.4rem',color:'#ffd600',letterSpacing:2}}>
+            {fmtCountdownP(nextLockTimeP-now)}
+          </span>
+        </div>
+      )}
+      {/* Âncoras de seção */}
+      <div style={{display:'flex',gap:5,marginBottom:'.75rem',flexWrap:'wrap'}}>
+        {[['#pp-andamento','⚽ Andamento','#ff9800'],['#pp-proximos','⏳ Próximos','#64b5f6'],['#pp-finalizados','✅ Finalizados','#00c853']].map(([href,label,color])=>(
+          <a key={href} href={href}
+            onClick={e=>{e.preventDefault();document.querySelector(href)?.scrollIntoView({behavior:'smooth',block:'start'});}}
+            style={{fontSize:10,fontWeight:700,color,textDecoration:'none',padding:'3px 10px',borderRadius:20,border:'1px solid '+color+'55',background:color+'11',letterSpacing:.3,whiteSpace:'nowrap'}}>
+            {label}
+          </a>
+        ))}
+      </div>
+      <div className="tab">
+        {['group','knockout'].map(t=>(
+          <button key={t} className={`tab-btn ${tab===t?'active':''}`} onClick={()=>setTab(t)}>
+            {t==='group'?'Fase de Grupos':'Mata-Mata'}
+          </button>
+        ))}
+      </div>
+      {tab==='group'&&(
+        <div className="scrollable">
+          {(()=>{
+            const inProg=[],upcoming=[],finished=[];
+            GROUPS.forEach(g=>{
+              const games=GROUP_GAMES.filter(gm=>gm.group===g);
+              if(!games.length)return;
+              const anyLocked=games.some(gm=>isLockedNowP(gm));
+              const anyResult=games.some(gm=>{const r=state.results?.[gm.id];return r&&r.home!==''&&!isNaN(parseInt(r.home));});
+              const anyOpen=games.some(gm=>!isLockedNowP(gm));
+              if(anyLocked&&!anyResult)inProg.push(g);
+              else if(anyResult&&!anyOpen)finished.push(g);
+              else upcoming.push(g);
+            });
+            function renderG(g){
+              const games=GROUP_GAMES.filter(gm=>gm.group===g);
+              return(
+                <div key={g} style={{marginBottom:'1rem'}}>
+                  <div className="group-header"><h2 style={{fontSize:'.85rem'}}>{g==='LIB'?'🏆 Libertadores (Teste)':g==='SUL'?'🏆 Sul-Americana (Teste)':`Grupo ${g}`}</h2></div>
+                  {games.map(gm=>{
+                    const isGoldenM=goldenIdsP.has(gm.id);
+                    const msToLockM=lockTime(gm)-now;
+                    const lockedM=isLockedNowP(gm);
+                    return(
+                      <div key={gm.id} style={{border:isGoldenM?'1px solid #ffd60066':'1px solid transparent',borderRadius:11,marginBottom:lockedM?0:isGoldenM?4:0}}>
+                        {isGoldenM&&!lockedM&&msToLockM>0&&(
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'2px 8px 0',fontSize:10}}>
+                            <span style={{color:'#ffd600',fontWeight:700,letterSpacing:.5}}>⚡ Fecha em breve</span>
+                            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:'#ffd600',letterSpacing:1}}>{fmtCountdownP(msToLockM)}</span>
+                          </div>
+                        )}
+                        <MatchRow game={gm} pick={myPicks[gm.id]} onPick={pick=>updatePick(gm.id,pick)}
+                          locked={lockedM} result={state.results[gm.id]} isKnockout={false} isGolden={isGoldenM}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+            return(
+              <>
+                {inProg.length>0&&<div id="pp-andamento" style={{marginBottom:'1.5rem'}}>
+                  <div className="group-header" style={{borderLeftColor:'#ff9800',marginBottom:'.5rem'}}><h2 style={{fontSize:'.9rem',color:'#ff9800'}}>⚽ Em Andamento</h2></div>
+                  {inProg.map(renderG)}
+                </div>}
+                {upcoming.length>0&&<div id="pp-proximos" style={{marginBottom:'1.5rem'}}>
+                  <div className="group-header" style={{borderLeftColor:'#64b5f6',marginBottom:'.5rem'}}><h2 style={{fontSize:'.9rem',color:'#64b5f6'}}>⏳ Próximos — abertos para palpitar</h2></div>
+                  {upcoming.map(renderG)}
+                </div>}
+                {finished.length>0&&<div id="pp-finalizados" style={{marginBottom:'1.5rem'}}>
+                  <div className="group-header" style={{borderLeftColor:'#00c853',marginBottom:'.5rem'}}><h2 style={{fontSize:'.9rem',color:'#00c853'}}>✅ Finalizados</h2></div>
+                  {finished.map(renderG)}
+                </div>}
+              </>
+            );
+          })()}
+        </div>
+      )}
+      {tab==='knockout'&&(
+        <div className="scrollable">
+          {(!state.knockoutGames||!state.knockoutGames.length)?
+            <div className="empty"><div className="empty-icon">⏳</div><p>Mata-mata ainda não configurado.</p></div>:
+            KNOCKOUT_TEMPLATE.map(ph=>{
+              const games=(state.knockoutGames||[]).filter(g=>g.phase===ph.phase&&g.home&&g.away);
+              if(!games.length)return null;
+              return(
+                <div key={ph.phase} style={{marginBottom:'1rem'}}>
+                  <div className="group-header"><h2 style={{fontSize:'.85rem'}}>{ph.label}</h2></div>
+                  {games.map(gm=>{
+                    const isGoldenM=goldenIdsP.has(gm.id);
+                    const msToLockM=lockTime(gm)-now;
+                    const lockedM=isLockedNowP(gm);
+                    return(
+                      <div key={gm.id} style={{border:isGoldenM?'1px solid #ffd60066':'1px solid transparent',borderRadius:11,marginBottom:isGoldenM?4:0}}>
+                        {isGoldenM&&!lockedM&&msToLockM>0&&(
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'2px 8px 0',fontSize:10}}>
+                            <span style={{color:'#ffd600',fontWeight:700,letterSpacing:.5}}>⚡ Fecha em breve</span>
+                            <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:'#ffd600',letterSpacing:1}}>{fmtCountdownP(msToLockM)}</span>
+                          </div>
+                        )}
+                        <MatchRow game={gm} pick={myPicks[gm.id]} onPick={pick=>updatePick(gm.id,pick)}
+                          locked={lockedM} result={state.results[gm.id]} isKnockout={true} isGolden={isGoldenM}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminView({state,setState,onSave,saving}){
+  const[tab,setTab]=useState('players');
+  const[newName,setNewName]=useState('');
+  const[newUsername,setNewUsername]=useState('');
+  const[newEmail,setNewEmail]=useState('');
+  const[newPass,setNewPass]=useState('');
+  const baseUrl=window.location.origin+window.location.pathname;
+
+  function addPlayer(){
+    if(!newName.trim()||!newUsername.trim()||!newPass.trim())return alert('Preencha nome, usuário e senha!');
+    const id=genId();
+    setState(s=>({...s,players:[...s.players,{id,name:newName.trim(),username:newUsername.trim().toLowerCase(),email:newEmail.trim(),password:newPass.trim(),bonusPicks:{},topScorer:''}]}));
+    setNewName('');setNewUsername('');setNewEmail('');setNewPass('');
+  }
+  function removePlayer(id){
+    if(!confirm('Remover participante?'))return;
+    setState(s=>({...s,players:s.players.filter(p=>p.id!==id)}));
+  }
+  function updateResult(gid,side,val){
+    setState(s=>({...s,results:{...s.results,[gid]:{...(s.results?.[gid]||{}),[side]:val}}}));
+  }
+  function updateKO(gid,field,val){
+    setState(s=>({...s,knockoutGames:(s.knockoutGames||[]).map(g=>g.id===gid?{...g,[field]:val}:g)}));
+  }
+  function initKnockout(){
+    let id=100;
+    const games=KNOCKOUT_TEMPLATE.flatMap(ph=>Array.from({length:ph.count},()=>({id:id++,phase:ph.phase,label:'',home:'',away:'',date:'',time:'',city:''})));
+    setState(s=>({...s,knockoutGames:games}));
+  }
+
+  return(
+    <div>
+      <div className="flex-between" style={{marginBottom:'1rem',flexWrap:'wrap',gap:8}}>
+        <h1>Painel Admin</h1>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-ghost" onClick={()=>{
+            const dt=new Date().toISOString().slice(0,10);
+            // JSON
+            const jblob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+            const ja=document.createElement('a');ja.href=URL.createObjectURL(jblob);
+            ja.download='bolao_backup_'+dt+'.json';ja.click();URL.revokeObjectURL(ja.href);
+            // HTML visual
+            setTimeout(()=>{
+              const det=computeDetailedScores(state);
+              const ranked=[...state.players].map(p=>({...p,...det[p.id]||{total:0,exact:0,onlyWinner:0,bonusPts:0}})).sort((a,b)=>b.total-a.total);
+              const pot=state.players.length*50;
+              const now=new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
+              const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])];
+              let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Backup Bolão do Batata — ${dt}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#0a0e1a;color:#e8ecf4;padding:1.5rem}
+h1{font-size:1.8rem;color:#ffd600;margin-bottom:.25rem}
+h2{font-size:1.1rem;color:#ffd600;margin:1.5rem 0 .5rem;border-bottom:1px solid #2a3560;padding-bottom:.4rem}
+h3{font-size:.9rem;color:#64b5f6;margin:.75rem 0 .3rem}
+.meta{color:#7b89b0;font-size:12px;margin-bottom:1.5rem}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:1rem}
+th{background:#1c2540;color:#7b89b0;padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:6px 10px;border-bottom:1px solid #1c2540;vertical-align:top}
+tr:nth-child(even) td{background:#0d1220}
+.gold{color:#ffd600;font-weight:700}
+.green{color:#00c853;font-weight:700}
+.red{color:#ff3d57}
+.muted{color:#7b89b0}
+.badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.badge-gold{background:#ffd60022;color:#ffd600;border:1px solid #ffd60044}
+.badge-green{background:#00c85322;color:#00c853;border:1px solid #00c85344}
+.badge-red{background:#ff3d5722;color:#ff3d57;border:1px solid #ff3d5744}
+.section{background:#131929;border:1px solid #2a3560;border-radius:10px;padding:1rem;margin-bottom:1rem}
+</style></head><body>
+<h1>⚽ Bolão do Batata — Backup</h1>
+<div class="meta">Gerado em: ${now} &nbsp;|&nbsp; ${state.players.length} participantes &nbsp;|&nbsp; Pote: R$ ${pot}</div>`;
+
+              // RANKING
+              html+=`<div class="section"><h2>🏆 Ranking</h2><table><tr><th>#</th><th>Jogador</th><th>Pontos</th><th>Cravadas</th><th>Resultados</th><th>Bônus</th><th>Campeão</th><th>Vice</th><th>3º</th><th>Artilheiro</th></tr>`;
+              ranked.forEach((p,i)=>{
+                const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}º`;
+                const bp=p.bonusPicks||{};
+                html+=`<tr><td>${medal}</td><td><strong>${p.name}</strong></td><td class="gold">${p.total}</td><td class="green">${p.exact||0}</td><td style="color:#ffd600">${p.onlyWinner||0}</td><td style="color:#ab47bc">${p.bonusPts||0}</td><td class="muted">${bp.champion||'–'}</td><td class="muted">${bp.runnerUp||'–'}</td><td class="muted">${bp.third||'–'}</td><td class="muted">${p.topScorer||'–'}</td></tr>`;
+              });
+              html+=`</table></div>`;
+
+              // RESULTADOS
+              const gamesWithResult=allGames.filter(g=>{const r=state.results?.[g.id];return r&&r.home!==''&&!isNaN(parseInt(r.home));});
+              if(gamesWithResult.length){
+                html+=`<div class="section"><h2>📋 Resultados Inseridos (${gamesWithResult.length} jogos)</h2><table><tr><th>#</th><th>Jogo</th><th>Data</th><th>Resultado</th>`;
+                state.players.forEach(p=>html+=`<th>${shortName(p.name)}</th>`);
+                html+=`</tr>`;
+                gamesWithResult.forEach(g=>{
+                  const r=state.results[g.id];
+                  html+=`<tr><td class="muted">#${g.id}</td><td><strong>${g.home} × ${g.away}</strong></td><td class="muted">${g.date||''} ${g.time||''}</td><td class="gold">${r.home}×${r.away}</td>`;
+                  state.players.forEach(p=>{
+                    const pick=(state.picks?.[p.id]||{})[g.id];
+                    const hasPick=pick&&pick.home!==''&&pick.away!==''&&!isNaN(parseInt(pick.home));
+                    if(!hasPick){html+=`<td class="muted">–</td>`;return;}
+                    const pts=calcPoints(pick,r,state.config,false);
+                    const cls=pts>=10?'badge-green':pts>0?'badge-gold':'badge-red';
+                    html+=`<td><span class="badge ${cls}">${pick.home}×${pick.away}</span></td>`;
+                  });
+                  html+=`</tr>`;
+                });
+                html+=`</table></div>`;
+              }
+
+              // PALPITES PENDENTES
+              html+=`<div class="section"><h2>⏳ Palpites Registrados (jogos sem resultado)</h2>`;
+              const pendingGames=allGames.filter(g=>{const r=state.results?.[g.id];return !r||r.home===''||isNaN(parseInt(r.home));}).filter(g=>{return state.players.some(p=>{const pick=(state.picks?.[p.id]||{})[g.id];return pick&&pick.home!==''&&!isNaN(parseInt(pick.home));});});
+              if(pendingGames.length){
+                html+=`<table><tr><th>#</th><th>Jogo</th><th>Data</th>`;
+                state.players.forEach(p=>html+=`<th>${shortName(p.name)}</th>`);
+                html+=`</tr>`;
+                pendingGames.slice(0,30).forEach(g=>{
+                  html+=`<tr><td class="muted">#${g.id}</td><td><strong>${g.home} × ${g.away}</strong></td><td class="muted">${g.date||''} ${g.time||''}</td>`;
+                  state.players.forEach(p=>{
+                    const pick=(state.picks?.[p.id]||{})[g.id];
+                    const hasPick=pick&&pick.home!==''&&!isNaN(parseInt(pick.home));
+                    html+=`<td>${hasPick?`<span class="badge badge-gold">${pick.home}×${pick.away}</span>`:'<span class="muted">–</span>'}</td>`;
+                  });
+                  html+=`</tr>`;
+                });
+                html+=`</table></div>`;
+              } else {
+                html+=`<p class="muted">Nenhum palpite pendente.</p></div>`;
+              }
+
+              html+=`</body></html>`;
+              const hblob=new Blob([html],{type:'text/html'});
+              const ha=document.createElement('a');ha.href=URL.createObjectURL(hblob);
+              ha.download='bolao_backup_'+dt+'.html';ha.click();URL.revokeObjectURL(ha.href);
+            },500);
+          }}>
+            💾 Backup JSON + HTML
+          </button>
+          <button className="btn btn-primary" onClick={onSave} disabled={saving==='saving'}>
+            {saving==='saving'?'Salvando...':'☁️ Salvar no GitHub'}
+          </button>
+        </div>
+      </div>
+      <div className="tab">
+        {['players','results','knockout','bonus','config'].map(t=>(
+          <button key={t} className={`tab-btn ${tab===t?'active':''}`} onClick={()=>setTab(t)}>
+            {t==='players'?'Participantes':t==='results'?'Resultados':t==='knockout'?'Mata-Mata':t==='bonus'?'Finais':'Pontuação'}
+          </button>
+        ))}
+      </div>
+
+      {tab==='players'&&(
+        <div>
+          <div className="card" style={{marginBottom:'1rem'}}>
+            <h2 style={{marginBottom:'1rem'}}>Adicionar Participante</h2>
+            <div className="flex gap-md" style={{flexWrap:'wrap'}}>
+              <input placeholder="Nome completo" value={newName} onChange={e=>setNewName(e.target.value)} style={{flex:1,minWidth:120}}/>
+              <input placeholder="Usuário" value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase())} style={{flex:1,minWidth:100}}/>
+              <input placeholder="Email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} style={{flex:1,minWidth:130}}/>
+              <input placeholder="Senha" value={newPass} onChange={e=>setNewPass(e.target.value)} style={{flex:1,minWidth:100}}/>
+              <button className="btn btn-green" onClick={addPlayer} style={{flexShrink:0}}>+ Adicionar</button>
+            </div>
+          </div>
+          <div className="scrollable">
+            {state.players.length===0?<div className="empty"><div className="empty-icon">👥</div><p>Nenhum participante</p></div>:(
+              state.players.map(p=>(
+                <div key={p.id} className="card-dark">
+                  <div className="flex-between">
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,fontSize:13}}>{p.name} <span className="badge badge-blue">{p.id}</span></div>
+                      <div style={{fontSize:11,color:'var(--muted)'}}>@{p.username||'sem usuário'} {p.email&&'· '+p.email}</div>
+                      <div style={{fontSize:11,color:'var(--muted)'}}>Senha: <span style={{color:'var(--yellow)'}}>{p.password||'—'}</span></div>
+                      <div className="link-box" onClick={()=>navigator.clipboard.writeText(`${baseUrl}?player=${p.id}`)}>
+                        {baseUrl}?player={p.id}
+                      </div>
+                    </div>
+                    <button className="btn btn-danger btn-sm" style={{flexShrink:0,marginLeft:8}} onClick={()=>removePlayer(p.id)}>Remover</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab==='results'&&(
+        <div>
+          <div className="alert alert-info">Insira os placares reais para calcular pontuações.</div>
+          <div className="scrollable">
+            {GROUPS.map(g=>{
+              const games=GROUP_GAMES.filter(gm=>gm.group===g);
+              return(
+                <div key={g} style={{marginBottom:'1rem'}}>
+                  <div className="group-header"><h2 style={{fontSize:'.85rem'}}>{g==='LIB'?'🏆 Libertadores (Teste)':g==='SUL'?'🏆 Sul-Americana (Teste)':`Grupo ${g}`}</h2></div>
+                  {games.map(gm=>{
+                    const res=state.results?.[gm.id]||{};
+                    return(
+                      <div key={gm.id} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:9,padding:'.55rem .75rem',marginBottom:5}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'.3rem'}}>
+                          <span style={{fontFamily:"'Bebas Neue'",fontSize:'.8rem',color:'var(--muted)'}}>#{gm.id} · {gm.date?gm.date.slice(8)+'/'+gm.date.slice(5,7):''} {gm.time}</span>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{fontWeight:600,fontSize:12,flex:1,textAlign:'right',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{gm.home}</span>
+                          <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+                            <ScoreInput value={res.home??''} onChange={v=>updateResult(gm.id,'home',v)}/>
+                            <span style={{color:'var(--muted)',fontSize:10,fontWeight:700}}>×</span>
+                            <ScoreInput value={res.away??''} onChange={v=>updateResult(gm.id,'away',v)}/>
+                          </div>
+                          <span style={{fontWeight:600,fontSize:12,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{gm.away}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {tab==='knockout'&&(
+        (!state.knockoutGames||!state.knockoutGames.length)?
+          <div style={{textAlign:'center',padding:'2rem'}}>
+            <p style={{color:'var(--muted)',marginBottom:'1rem'}}>Inicialize o mata-mata após a fase de grupos.</p>
+            <button className="btn btn-primary" onClick={initKnockout}>Inicializar Mata-Mata</button>
+          </div>:
+          <div className="scrollable">
+            {KNOCKOUT_TEMPLATE.map(ph=>{
+              const games=(state.knockoutGames||[]).filter(g=>g.phase===ph.phase);
+              return(
+                <div key={ph.phase} style={{marginBottom:'1.25rem'}}>
+                  <div className="group-header"><h2 style={{fontSize:'.85rem'}}>{ph.label}</h2></div>
+                  {games.map(gm=>(
+                    <div key={gm.id} className="card-dark" style={{marginBottom:6}}>
+                      <div style={{fontSize:10,color:'var(--muted)',marginBottom:5,textTransform:'uppercase'}}>Jogo {gm.id}</div>
+                      <div className="flex gap-md" style={{flexWrap:'wrap',marginBottom:6}}>
+                        <input placeholder="Time A" value={gm.home} onChange={e=>updateKO(gm.id,'home',e.target.value)} style={{flex:1,minWidth:110}}/>
+                        <span style={{alignSelf:'center',color:'var(--muted)',fontSize:11}}>vs</span>
+                        <input placeholder="Time B" value={gm.away} onChange={e=>updateKO(gm.id,'away',e.target.value)} style={{flex:1,minWidth:110}}/>
+                      </div>
+                      <div className="flex gap-md" style={{flexWrap:'wrap',marginBottom:6}}>
+                        <input type="date" value={gm.date} onChange={e=>updateKO(gm.id,'date',e.target.value)} style={{width:135}}/>
+                        <input type="time" value={gm.time} onChange={e=>updateKO(gm.id,'time',e.target.value)} style={{width:95}}/>
+                        <input placeholder="Cidade" value={gm.city} onChange={e=>updateKO(gm.id,'city',e.target.value)} style={{flex:1}}/>
+                      </div>
+                      <div className="flex gap-md">
+                        <span style={{fontSize:11,color:'var(--muted)'}}>Resultado:</span>
+                        <ScoreInput value={state.results?.[gm.id]?.home??''} onChange={v=>updateResult(gm.id,'home',v)}/>
+                        <span className="vs">X</span>
+                        <ScoreInput value={state.results?.[gm.id]?.away??''} onChange={v=>updateResult(gm.id,'away',v)}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+      )}
+
+      {tab==='bonus'&&(
+        <div className="card" style={{maxWidth:560}}>
+          <h2 style={{marginBottom:'.5rem'}}>Resultados Finais</h2>
+          <p style={{fontSize:12,color:'var(--muted)',marginBottom:'1rem'}}>
+            Adicione múltiplos nomes separados por vírgula. Ex: <strong style={{color:'var(--yellow)'}}>Kane, Harry Kane</strong>
+          </p>
+          {[
+            {key:'finalChampion',label:'🏆 Campeão',list:SELECOES},
+            {key:'finalRunnerUp',label:'🥈 Vice-Campeão',list:SELECOES},
+            {key:'finalThird',label:'🥉 Terceiro Lugar',list:SELECOES},
+            {key:'finalTopScorer',label:'⚽ Artilheiro',list:null},
+          ].map(({key,label,list})=>(
+            <div key={key} style={{marginBottom:'1rem'}}>
+              <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>{label}</label>
+              {list?(
+                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:4}}>
+                  {list.map(s=>(
+                    <span key={s}
+                      onClick={()=>{
+                        const cur=state[key]||'';
+                        const parts=cur.split(',').map(x=>x.trim()).filter(Boolean);
+                        if(!parts.includes(s)){setState(x=>({...x,[key]:[...parts,s].join(', ')}))}
+                      }}
+                      style={{background:(state[key]||'').split(',').map(x=>x.trim()).includes(s)?'#ffd60033':'var(--surface3)',
+                        border:`1px solid ${(state[key]||'').split(',').map(x=>x.trim()).includes(s)?'#ffd600':'var(--border)'}`,
+                        borderRadius:6,padding:'2px 8px',fontSize:11,cursor:'pointer',
+                        color:(state[key]||'').split(',').map(x=>x.trim()).includes(s)?'var(--yellow)':'var(--muted)',
+                        transition:'all .15s'}}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              ):null}
+              <input value={state[key]||''} onChange={e=>setState(s=>({...s,[key]:e.target.value}))}
+                placeholder={list?"Clique nas seleções acima ou digite":"Ex: Kane, Harry Kane, Harry"}
+                style={{fontSize:13}}/>
+              <div style={{fontSize:10,color:'var(--muted)',marginTop:3}}>
+                Aliases aceitos: {(state[key]||'').split(',').filter(x=>x.trim()).length} variação(ões)
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab==='config'&&(
+        <div className="card" style={{maxWidth:440}}>
+          <h2 style={{marginBottom:'1rem'}}>Pontuação</h2>
+          <div className="config-grid">
+            {[
+              {key:'exactScore',label:'🎯 Cravada (placar exato)'},
+              {key:'onlyWinner',label:'👍 Resultado (vencedor ou empate)'},
+              {key:'champion',label:'🏆 Campeão'},
+              {key:'runnerUp',label:'🥈 Vice-Campeão'},
+              {key:'third',label:'🥉 Terceiro Lugar'},
+              {key:'topScorer',label:'⚽ Artilheiro da Copa'},
+              {key:'lockBefore',label:'🔒 Bloquear X min antes'},
+            ].map(({key,label})=>(
+              <React.Fragment key={key}>
+                <label>{label}</label>
+                <input type="number" min="0" style={{width:75,textAlign:'center'}} value={state.config[key]||0}
+                  onChange={e=>setState(s=>({...s,config:{...s.config,[key]:parseInt(e.target.value)||0}}))}/>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoginView({state,onLoginPlayer,onLoginAdmin}){
+  const[user,setUser]=useState('');
+  const[pass,setPass]=useState('');
+  const[err,setErr]=useState('');
+  const[mode,setMode]=useState('player');
+
+  function doLogin(){
+    setErr('');
+    if(mode==='admin'){
+      if(user===ADMIN_USER&&pass===ADMIN_PASS){onLoginAdmin();return;}
+      setErr('Usuário ou senha incorretos.');return;
+    }
+    const u=user.trim().toLowerCase();
+    const found=state.players.find(x=>(
+      (x.username&&x.username.toLowerCase()===u)||
+      (x.email&&x.email.toLowerCase()===u)||
+      (x.name&&x.name.toLowerCase()===u)
+    )&&x.password===pass);
+    if(found){onLoginPlayer(found.id);return;}
+    setErr('Usuário, e-mail ou nome incorretos.');
+  }
+
+  return(
+    <div style={{minHeight:'80vh',display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
+      <div className="login-card">
+        <div className="login-logo">Bolão do Batata</div>
+        <div className="login-sub">Copa do Mundo 2026 ⚽</div>
+        <div className="tab" style={{marginBottom:'1.25rem'}}>
+          <button className={`tab-btn ${mode==='player'?'active':''}`} style={{flex:1}} onClick={()=>{setMode('player');setErr('')}}>Jogador</button>
+          <button className={`tab-btn ${mode==='admin'?'active':''}`} style={{flex:1}} onClick={()=>{setMode('admin');setErr('')}}>Admin</button>
+        </div>
+        <div className="flex-col gap-md">
+          <div>
+            <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>Usuário</label>
+            <input value={user} onChange={e=>setUser(e.target.value)} placeholder={mode==='admin'?'admin':'Usuário, e-mail ou nome'} onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+          </div>
+          <div>
+            <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>Senha</label>
+            <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+          </div>
+          {err&&<div style={{fontSize:12,color:'var(--red)',background:'#ff3d5711',padding:'6px 10px',borderRadius:6}}>{err}</div>}
+          <button className="btn btn-primary" onClick={doLogin} style={{width:'100%',marginTop:4}}>Entrar →</button>
+        </div>
+        {mode==='player'&&(
+          <p style={{fontSize:11,color:'var(--muted)',marginTop:'1rem',textAlign:'center'}}>
+            Use o usuário e senha definidos no cadastro.<br/>
+            <a href="cadastro.html" style={{color:'var(--yellow)',textDecoration:'none',fontWeight:700,fontSize:12}}>
+              Não tem cadastro? Cadastre-se aqui →
+            </a>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── APP ──────────────────────────────────────────
+const DEFAULT_STATE={
+  players:[],picks:{},results:{},knockoutGames:[],
+  config:{exactScore:10,onlyWinner:5,topScorer:15,champion:15,runnerUp:15,third:15,lockBefore:60},
+  adminPass:'H7taj2kd*',
+  finalTopScorer:'',finalChampion:'',finalRunnerUp:'',finalThird:'',
+};
+
+function App(){
+  const[state,setStateRaw]=useState(DEFAULT_STATE);
+  const[view,setView]=useState('ranking');
+  const[session,setSession]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[loadErr,setLoadErr]=useState('');
+  const[saving,setSaving]=useState('');
+
+  useEffect(()=>{
+    ghFetch().then(data=>{
+      setStateRaw(s=>({...DEFAULT_STATE,...data}));
+      setLoading(false);
+    }).catch(e=>{setLoadErr(e.message);setLoading(false)});
+  },[]);
+
+  useEffect(()=>{
+    const p=new URLSearchParams(window.location.search).get('player');
+    if(p&&p.length>3)setSession({type:'player',playerId:p.toUpperCase()});
+  },[]);
+
+  function setState(updater){
+    setStateRaw(prev=>typeof updater==='function'?updater(prev):updater);
+  }
+
+  async function handleSave(){
+    setSaving('saving');
+    try{
+      const toSave={...state};
+      const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])];
+      const playerId=session?.type==='player'?session.playerId:null;
+      await ghSave(toSave,playerId,allGames,state.config.lockBefore,session?.type==='admin');
+      setSaving('ok');
+    }catch(e){
+      setSaving('error');
+      alert('Erro ao salvar: '+e.message);
+    }
+    setTimeout(()=>setSaving(''),3000);
+  }
+
+  if(loading)return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16}}>
+      <div className="spinner" style={{width:36,height:36,borderWidth:3}}/>
+      <p style={{color:'var(--muted)',fontSize:13}}>Carregando Bolão do Batata...</p>
+    </div>
+  );
+
+  if(!session)return(
+    <>
+      {loadErr&&<div className="alert alert-warn" style={{margin:'1rem'}}>⚠️ {loadErr}</div>}
+      <LoginView state={state}
+        onLoginPlayer={pid=>{setSession({type:'player',playerId:pid});setView('picks')}}
+        onLoginAdmin={()=>{setSession({type:'admin'});setView('admin')}}
+      />
+    </>
+  );
+
+  const isAdmin=session.type==='admin';
+  const isPlayer=session.type==='player';
+
+  const navItems=[
+    {id:'ranking',label:'Ranking'},
+    {id:'proximos',label:'Jogos'},
+    {id:'charts',label:'Gráficos'},
+    {id:'regulamento',label:'Regulamento'},
+    ...(isPlayer?[{id:'picks',label:'Meus Palpites'}]:[]),
+    ...(isAdmin?[{id:'admin',label:'⚙️ Admin'}]:[]),
+  ];
+
+  return(
+    <div className="app">
+      <header className="header">
+        <div className="header-inner">
+          <div className="logo" onClick={()=>setView('ranking')}>Bolão do Batata</div>
+          <nav className="nav">
+            {navItems.map(n=>(
+              <button key={n.id} className={`nav-btn ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>{n.label}</button>
+            ))}
+            <button className="nav-btn" onClick={()=>setSession(null)} style={{color:'var(--red)'}}>Sair</button>
+          </nav>
+        </div>
+      </header>
+      {loadErr&&<div className="alert alert-warn" style={{margin:'1rem 1.25rem 0'}}>⚠️ {loadErr}</div>}
+      <main className="content">
+        {view==='ranking'&&<RankingView state={state}/>}
+        {view==='picks'&&isPlayer&&<PlayerView state={state} setState={setState} onSave={handleSave} saving={saving} playerId={session.playerId}/>}
+        {view==='charts'&&<ChartView state={state}/>}
+        {view==='proximos'&&<ProximosJogos state={state} session={session}/>}
+        {view==='regulamento'&&<Regulamento/>}
+        {view==='admin'&&isAdmin&&<AdminView state={state} setState={setState} onSave={handleSave} saving={saving}/>}
+      </main>
+      <SavingBar status={saving}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
