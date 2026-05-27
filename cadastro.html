@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro — Bolão do Vini</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:#0a0e1a;color:#e8ecf4;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+:root{--green:#00d400;--yellow:#ffd700;--red:#ff3d57;--surface:#131929;--surface2:#1c2540;--surface3:#232d4f;--border:#2a3560;--muted:#7b89b0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;width:100%;max-width:420px}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:4px;background:linear-gradient(135deg,var(--yellow),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900;text-align:center;margin-bottom:1rem}
+.subtitle{text-align:center;color:var(--muted);font-size:13px;margin-bottom:1.75rem}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;letter-spacing:.3px}
+input{background:var(--surface2);border:1px solid var(--border);color:#e8ecf4;padding:10px 14px;border-radius:8px;font-family:'Barlow',sans-serif;font-size:14px;outline:none;transition:border .2s;width:100%;margin-bottom:1rem}
+input:focus{border-color:var(--yellow)}
+input::placeholder{color:var(--muted)}
+.btn{padding:12px 20px;border-radius:10px;font-family:'Barlow',sans-serif;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;border:none;transition:all .15s;width:100%}
+.btn-y{background:var(--yellow);color:#0a0e1a}.btn-y:hover{background:#ffe033}
+.btn-y:disabled{opacity:.5;cursor:not-allowed}
+.btn-g{background:var(--green);color:#0a0e1a;margin-top:.75rem}.btn-g:hover{background:#2bda6a}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:.5rem}.btn-ghost:hover{color:#e8ecf4}
+.err{background:#ff3d5718;border:1px solid #ff3d5744;border-radius:8px;padding:.65rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem;font-weight:600}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #0a0e1a44;border-top-color:#0a0e1a;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* PIX screen */
+.pix-screen{display:none}
+.pix-screen.show{display:block}
+.form-screen{display:block}
+.form-screen.hide{display:none}
+
+.bizum-box{background:linear-gradient(135deg,#0a1810,#051008);border:1px solid #00d40044;border-radius:12px;padding:1.5rem;text-align:center;margin-bottom:1.25rem}
+.bizum-icon{font-size:3rem;margin-bottom:.5rem}
+.bizum-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;color:var(--green);margin-bottom:.25rem}
+.bizum-subtitle{font-size:13px;color:#7b89b0;margin-bottom:1rem}
+.bizum-key-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem}
+.bizum-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:.5rem}
+.bizum-key{background:#0a0e1a;border:1px solid var(--green);border-radius:8px;padding:.65rem 1rem;font-size:15px;font-weight:700;color:var(--green);letter-spacing:1px;cursor:pointer;transition:all .15s}
+.bizum-key:hover{background:#00d40011}
+.copy-hint{font-size:11px;color:var(--muted)}
+.value-badge{display:inline-block;background:#ffd70022;border:1px solid #ffd70055;border-radius:20px;padding:.3rem 1rem;font-size:1.1rem;font-weight:700;color:var(--yellow);margin:1rem 0 .5rem}
+.steps{text-align:left;background:var(--surface2);border-radius:10px;padding:1rem;margin-bottom:1.25rem}
+.step{display:flex;gap:10px;margin-bottom:.6rem;font-size:13px;align-items:flex-start}
+.step:last-child{margin-bottom:0}
+.step-num{background:var(--yellow);color:#0a0e1a;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;margin-top:2px}
+.step-txt{color:#c8d0e0;line-height:1.4}
+.welcome{background:linear-gradient(135deg,#1a2540,#131929);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-bottom:1rem;text-align:center}
+.welcome-name{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#fff;letter-spacing:2px}
+.welcome-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.copied-msg{font-size:11px;color:var(--green);font-weight:700;margin-top:.25rem;height:16px;transition:opacity .3s}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <!-- FORMULÁRIO DE CADASTRO -->
+  <div class="form-screen" id="formScreen">
+    <div class="logo">Bolão do Vini</div>
+    <div class="subtitle">Copa do Mundo 2026 ⚽ · Cadastro</div>
+
+    <div id="errMsg" class="err" style="display:none"></div>
+
+    <div>
+      <label>Nome completo</label>
+      <input type="text" id="fname" placeholder="Ex: João Silva" autocomplete="name">
+    </div>
+    <div>
+      <label>Nome de usuário <span style="color:var(--muted);font-weight:400">(para login)</span></label>
+      <input type="text" id="fusername" placeholder="Ex: joaosilva" autocomplete="username" style="text-transform:lowercase">
+    </div>
+    <div>
+      <label>E-mail</label>
+      <input type="email" id="femail" placeholder="seuemail@gmail.com" autocomplete="email">
+    </div>
+    <div>
+      <label>Crie uma senha</label>
+      <input type="password" id="fpass" placeholder="Mínimo 4 caracteres" autocomplete="new-password">
+    </div>
+    <div>
+      <label>Confirme a senha</label>
+      <input type="password" id="fpass2" placeholder="Repita a senha" autocomplete="new-password">
+    </div>
+
+    <button class="btn btn-y" id="btnCadastrar" onclick="doCadastro()">Cadastrar →</button>
+
+    <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:1rem">
+      Já tem cadastro? <a href="index.html" style="color:var(--yellow);text-decoration:none;font-weight:700">Entrar no bolão →</a>
+    </p>
+  </div>
+
+  <!-- TELA DO BIZUM -->
+  <div class="pix-screen" id="pixScreen">
+    <div class="welcome">
+      <div class="welcome-name" id="pixWelcomeName"></div>
+      <div class="welcome-sub">Cadastro realizado com sucesso! ✓</div>
+    </div>
+
+    <div class="bizum-box">
+      <div class="bizum-icon">💳</div>
+      <div class="bizum-title">Pague via Bizum</div>
+      <div class="bizum-subtitle">Para confirmar sua vaga no bolão, envie €50,00 via Bizum</div>
+      <div class="value-badge">€ 50,00</div>
+      <div class="bizum-key-label" style="margin-top:.5rem">Número Bizum</div>
+      <div class="bizum-key" id="bizumKey" onclick="copyBizum()">+34 650 671 553</div>
+      <div class="copied-msg" id="copiedMsg"></div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-txt">Abra o app do seu banco e vá em <strong>Bizum → Enviar</strong></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-txt">Toque no campo acima para copiar ou insira o número manualmente: <strong>+34 650 671 553</strong></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-txt">Envie <strong>€50,00</strong> e finalize a transação</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-txt">Após o pagamento, clique em <strong>"Ir para o Bolão"</strong> e faça login</div></div>
+    </div>
+
+    <button class="btn btn-g" onclick="goToPortal()">⚽ Ir para o Bolão</button>
+    <button class="btn btn-ghost" onclick="copyBizum()">📋 Copiar Número Bizum</button>
+  </div>
+
+</div>
+
+<script>
+const GITHUB_OWNER = 'engmvsouza';
+const GITHUB_REPO  = 'bolao-copa-2026';
+const DATA_PATH    = 'data/state.json';
+const GITHUB_TOKEN = ['seu_token_aqui'].join('');
+const BIZUM_KEY    = '+34 650 671 553';
+
+let _sha = '';
+
+function genId(){return Math.random().toString(36).slice(2,9).toUpperCase()}
+
+async function loadState(){
+  const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}?t=${Date.now()}`;
+  const res=await fetch(url,{headers:{'Accept':'application/vnd.github+json','Authorization':`Bearer ${GITHUB_TOKEN}`}});
+  if(!res.ok)throw new Error('Erro ao carregar dados: '+res.status);
+  const json=await res.json();
+  _sha=json.sha;
+  return JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g,'')))));
+}
+
+async function saveState(data){
+  const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}`;
+  const body={
+    message:'cadastro: novo participante',
+    content:btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2)))),
+    sha:_sha,
+    branch:'main'
+  };
+  const res=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok){const e=await res.json();throw new Error(e.message||res.status)}
+  const json=await res.json();
+  _sha=json.content.sha;
+  return true;
+}
+
+function showErr(msg){
+  const el=document.getElementById('errMsg');
+  el.textContent=msg;
+  el.style.display='block';
+}
+function hideErr(){document.getElementById('errMsg').style.display='none'}
+
+async function doCadastro(){
+  hideErr();
+  const name=document.getElementById('fname').value.trim();
+  const username=document.getElementById('fusername').value.trim().toLowerCase().replace(/\s+/g,'');
+  const email=document.getElementById('femail').value.trim();
+  const pass=document.getElementById('fpass').value;
+  const pass2=document.getElementById('fpass2').value;
+
+  if(!name){showErr('Por favor, informe seu nome.');return}
+  if(name.length<3){showErr('Nome muito curto.');return}
+  if(!username||username.length<3){showErr('O usuário deve ter pelo menos 3 caracteres.');return}
+  if(!/^[a-z0-9._]+$/.test(username)){showErr('Usuário só pode ter letras, números, ponto e underline.');return}
+  if(!email||!email.includes('@')){showErr('Informe um e-mail válido.');return}
+  if(!pass||pass.length<4){showErr('A senha deve ter pelo menos 4 caracteres.');return}
+  if(pass!==pass2){showErr('As senhas não coincidem.');return}
+
+  const btn=document.getElementById('btnCadastrar');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Cadastrando...';
+
+  try{
+    const state=await loadState();
+
+    // Verificar duplicatas
+    const usernameExists=state.players.some(p=>p.username&&p.username.toLowerCase()===username.toLowerCase());
+    if(usernameExists){showErr('Esse usuário já está em uso. Escolha outro.');btn.disabled=false;btn.textContent='Cadastrar →';return}
+    const emailExists=email&&state.players.some(p=>p.email&&p.email.toLowerCase()===email.toLowerCase());
+    if(emailExists){showErr('Este e-mail já está cadastrado.');btn.disabled=false;btn.textContent='Cadastrar →';return}
+
+    // Adicionar novo jogador
+    const newPlayer={
+      id:genId(),
+      name,
+      username,
+      email,
+      password:pass,
+      bonusPicks:{},
+      topScorer:'',
+      registeredAt:new Date().toISOString(),
+      paymentPending:true
+    };
+    state.players.push(newPlayer);
+    await saveState(state);
+
+    // Mostrar tela do Bizum
+    document.getElementById('pixWelcomeName').textContent=name;
+    document.getElementById('formScreen').classList.add('hide');
+    document.getElementById('pixScreen').classList.add('show');
+
+  }catch(e){
+    showErr('Erro ao cadastrar: '+e.message);
+    btn.disabled=false;
+    btn.textContent='Cadastrar →';
+  }
+}
+
+function copyBizum(){
+  navigator.clipboard.writeText(BIZUM_KEY).then(()=>{
+    const msg=document.getElementById('copiedMsg');
+    msg.textContent='✓ Número copiado!';
+    setTimeout(()=>{msg.textContent=''},3000);
+  }).catch(()=>{
+    // fallback: select text
+    const el=document.getElementById('bizumKey');
+    const range=document.createRange();
+    range.selectNode(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+  });
+}
+
+function goToPortal(){
+  window.location.href='index.html';
+}
+
+// Enter key support
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('formScreen').classList.contains('hide')===false){
+    doCadastro();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+{
+  "players": [],
+  "picks": {},
+  "results": {},
+  "knockoutGames": [],
+  "config": {
+    "exactScore": 10,
+    "onlyWinner": 5,
+    "topScorer": 15,
+    "champion": 20,
+    "runnerUp": 10,
+    "third": 5
+  },
+  "finalTopScorer": "",
+  "finalChampion": "",
+  "finalRunnerUp": "",
+  "finalThird": "",
+  "prizeDistribution": {
+    "1st": 50,
+    "2nd": 25,
+    "3rd": 10,
+    "costs": 15
+  }
+}
