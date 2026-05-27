@@ -1,3 +1,3 @@
 # Bolão do Vini
 
-Site de bolão para a Copa do Mundo 2026 - com Bizum para pagamento.
+Site de bolão para a Copa do Mundo 2026
