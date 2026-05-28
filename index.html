@@ -1389,7 +1389,7 @@ function ProximosJogos({state,session}){
     <div>
       <div className="flex-between" style={{marginBottom:'1rem',flexWrap:'wrap',gap:8}}>
         <h1>Jogos</h1>
-        <span className="badge badge-green">💰 R$ {(state.players.length*50).toLocaleString('pt-BR')} no pote</span>
+        <span className="badge badge-green">💰 € {(state.players.length*50).toLocaleString('pt-BR')} no pote</span>
       </div>
 
       <div style={{position:'sticky',top:'var(--header-h,56px)',zIndex:90,background:'#0d1220ee',backdropFilter:'blur(8px)',borderBottom:'1px solid #2a3560',marginBottom:'1rem',marginLeft:'-1.25rem',marginRight:'-1.25rem'}}>
@@ -1506,13 +1506,13 @@ function Regulamento(){
         </div>
         <div className="reg-section">
           <h2>Sistema de Premiação</h2>
-          <p>Cada participante contribui com <strong style={{color:'#ffd600'}}>R$ 50,00</strong> de taxa de inscrição. O prêmio total cresce conforme o número de participantes.</p>
+          <p>Cada participante contribui com <strong style={{color:'#ffd600'}}>€ 50,00</strong> de taxa de inscrição. O prêmio total cresce conforme o número de participantes.</p>
           <table className="reg-table">
             <thead><tr><th>Posição</th><th>% do Prêmio</th><th>Exemplo (10 participantes)</th></tr></thead>
             <tbody>
-              <tr><td>🥇 <strong>1º Lugar</strong></td><td style={{color:'#ffd600',fontWeight:700}}>60%</td><td style={{color:'#ffd600'}}>R$ 300,00</td></tr>
-              <tr><td>🥈 <strong>2º Lugar</strong></td><td style={{color:'#b0bec5',fontWeight:700}}>30%</td><td style={{color:'#b0bec5'}}>R$ 150,00</td></tr>
-              <tr><td>🥉 <strong>3º Lugar</strong></td><td style={{color:'#ff8a65',fontWeight:700}}>10%</td><td style={{color:'#ff8a65'}}>R$ 50,00</td></tr>
+              <tr><td>🥇 <strong>1º Lugar</strong></td><td style={{color:'#ffd600',fontWeight:700}}>60%</td><td style={{color:'#ffd600'}}>€ 300,00</td></tr>
+              <tr><td>🥈 <strong>2º Lugar</strong></td><td style={{color:'#b0bec5',fontWeight:700}}>30%</td><td style={{color:'#b0bec5'}}>€ 150,00</td></tr>
+              <tr><td>🥉 <strong>3º Lugar</strong></td><td style={{color:'#ff8a65',fontWeight:700}}>10%</td><td style={{color:'#ff8a65'}}>€ 50,00</td></tr>
             </tbody>
           </table>
           <p style={{fontSize:12,color:'var(--muted)'}}>O prêmio exato aparece no ranking conforme o número de participantes registrados.</p>
@@ -1615,7 +1615,7 @@ function RankingView({state}){
         <h1>Ranking</h1>
         <div className="flex gap-md">
           <span className="badge badge-yellow">{n} participantes</span>
-          <span className="badge badge-green">💰 R$ {pot.toLocaleString('pt-BR')}</span>
+          <span className="badge badge-green">💰 € {pot.toLocaleString('pt-BR')}</span>
         </div>
       </div>
 
@@ -1630,7 +1630,7 @@ function RankingView({state}){
             <div key={label} style={{background:bg,border:`1px solid ${border}`,borderRadius:12,padding:'1rem .75rem',textAlign:'center'}}>
               <div style={{fontSize:10,color:color+'aa',fontWeight:700,letterSpacing:.5,marginBottom:4,textTransform:'uppercase'}}>{label}</div>
               <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.9rem',color,lineHeight:1,textShadow:`0 0 20px ${color}55`}}>
-                R$ {val.toLocaleString('pt-BR')}
+                € {val.toLocaleString('pt-BR')}
               </div>
             </div>
           ))}
@@ -1704,7 +1704,7 @@ function RankingView({state}){
                 </div>
                 <div style={{textAlign:'center'}}>
                   <div className="ranking-total" style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:totalSize,color:posColor,lineHeight:1,textShadow:i<3?`0 0 20px ${posColor}66`:undefined}}>{p.total}</div>
-                  {prizes[i]&&<div style={{fontSize:i<3?12:10,color:posColor,fontWeight:800,marginTop:2}}>R${prizes[i].toLocaleString('pt-BR')}</div>}
+                  {prizes[i]&&<div style={{fontSize:i<3?12:10,color:posColor,fontWeight:800,marginTop:2}}>€{prizes[i].toLocaleString('pt-BR')}</div>}
                   {isBottom3&&!prizes[i]&&<div style={{fontSize:9,color:'var(--red)'}}>↓</div>}
                 </div>
               </div>
@@ -2075,7 +2075,7 @@ tr:nth-child(even) td{background:#0d1220}
 .section{background:#131929;border:1px solid #2a3560;border-radius:10px;padding:1rem;margin-bottom:1rem}
 </style></head><body>
 <h1>⚽ Bolão do Vini — Backup</h1>
-<div class="meta">Gerado em: ${now} &nbsp;|&nbsp; ${state.players.length} participantes &nbsp;|&nbsp; Pote: R$ ${pot}</div>`;
+<div class="meta">Gerado em: ${now} &nbsp;|&nbsp; ${state.players.length} participantes &nbsp;|&nbsp; Pote: € ${pot}</div>`;
 
               // RANKING
               html+=`<div class="section"><h2>🏆 Ranking</h2><table><tr><th>#</th><th>Jogador</th><th>Pontos</th><th>Cravadas</th><th>Resultados</th><th>Bônus</th><th>Campeão</th><th>Vice</th><th>3º</th><th>Artilheiro</th></tr>`;
