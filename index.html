@@ -327,7 +327,7 @@ function flag(name){
 // Round grouping for line chart
 function getGameRound(g){
   if(!g.date)return'Mata-Mata';
-  const d=new Date(g.date+'T00:00:00-03:00');
+  const d=new Date(g.date+'T00:00:00+02:00');
   const m=d.getMonth()+1,day=d.getDate();
   // Test games
   if(g.group==='LIB')return'🏆 Libertadores';
@@ -511,7 +511,7 @@ function isLocked(game,lockMin){
     const parts=date.split('/');
     if(parts.length===3) date=`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
   }
-  const dt=new Date(`${date}T${game.time}:00-03:00`);
+  const dt=new Date(`${date}T${game.time}:00+02:00`);
   if(isNaN(dt.getTime()))return false;
   return Date.now()>=(dt.getTime()-lockMin*60000);
 }
@@ -1335,9 +1335,9 @@ function ProximosJogos({state,session}){
 
   const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])]
     .filter(g=>g.home&&g.away&&g.date&&g.time)
-    .sort((a,b)=>new Date(`${a.date}T${a.time}:00-03:00`)-new Date(`${b.date}T${b.time}:00-03:00`));
+    .sort((a,b)=>new Date(`${a.date}T${a.time}:00+02:00`)-new Date(`${b.date}T${b.time}:00+02:00`));
 
-  function gameTime(g){return new Date(`${g.date}T${g.time}:00-03:00`).getTime();}
+  function gameTime(g){return new Date(`${g.date}T${g.time}:00+02:00`).getTime();}
   function lockTimeF(g){return gameTime(g)-lockMin*60000;}
   function isLockedNow(g){return now>=lockTimeF(g);}
 
@@ -1691,9 +1691,9 @@ function RankingView({state}){
               </div>
               {(()=>{
                 // Apostas extras só visíveis após fechamento do 1º jogo da Copa
-                const firstCopa=[...GROUP_GAMES].filter(g=>g.group!=='LIB'&&g.group!=='SUL'&&g.group!=='TEST').sort((a,b)=>new Date(a.date+'T'+a.time+':00-03:00')-new Date(b.date+'T'+b.time+':00-03:00'))[0];
-                const bonusRevealed=firstCopa?Date.now()>=new Date(firstCopa.date+'T'+firstCopa.time+':00-03:00').getTime():false;
-                const firstDate=firstCopa?new Date(firstCopa.date+'T'+firstCopa.time+':00-03:00').toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+                const firstCopa=[...GROUP_GAMES].filter(g=>g.group!=='LIB'&&g.group!=='SUL'&&g.group!=='TEST').sort((a,b)=>new Date(a.date+'T'+a.time+':00+02:00')-new Date(b.date+'T'+b.time+':00+02:00'))[0];
+                const bonusRevealed=firstCopa?Date.now()>=new Date(firstCopa.date+'T'+firstCopa.time+':00+02:00').getTime():false;
+                const firstDate=firstCopa?new Date(firstCopa.date+'T'+firstCopa.time+':00+02:00').toLocaleString('pt-BR',{timeZone:'Europe/Madrid',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
                 if(!bonusRevealed){
                   return(
                     <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid var(--border)'}}>
@@ -1740,7 +1740,7 @@ function PlayerView({state,setState,onSave,saving,playerId}){
 
   function lockTime(g){
     if(!g.date||!g.time)return Infinity;
-    const dt=new Date(`${g.date}T${g.time}:00-03:00`);
+    const dt=new Date(`${g.date}T${g.time}:00+02:00`);
     if(isNaN(dt.getTime()))return Infinity;
     return dt.getTime()-lockMin*60000;
   }
@@ -1825,7 +1825,7 @@ function PlayerView({state,setState,onSave,saving,playerId}){
       {(()=>{
         // Apostas extras travam no 1º jogo da Copa real (exclui jogos teste LIB/SUL)
         const copaGames=GROUP_GAMES.filter(g=>g.group!=='LIB'&&g.group!=='SUL'&&g.group!=='TEST');
-        const firstGame=[...copaGames].sort((a,b)=>new Date(`${a.date}T${a.time}:00-03:00`)-new Date(`${b.date}T${b.time}:00-03:00`))[0];
+        const firstGame=[...copaGames].sort((a,b)=>new Date(`${a.date}T${a.time}:00+02:00`)-new Date(`${b.date}T${b.time}:00+02:00`))[0];
         const bonusLocked=firstGame?isLocked(firstGame,0):false;
         return(
           <div style={{background:bonusLocked?'var(--surface2)':'#1a2035',border:`1px solid ${bonusLocked?'var(--border)':'#ffd60044'}`,borderRadius:10,padding:'.75rem 1rem',marginBottom:'1rem'}}>
@@ -2036,7 +2036,7 @@ function AdminView({state,setState,onSave,saving}){
               const det=computeDetailedScores(state);
               const ranked=[...state.players].map(p=>({...p,...det[p.id]||{total:0,exact:0,onlyWinner:0,bonusPts:0}})).sort((a,b)=>b.total-a.total);
               const pot=state.players.length*50;
-              const now=new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
+              const now=new Date().toLocaleString('pt-BR',{timeZone:'Europe/Madrid'});
               const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])];
               let html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <title>Backup Bolão do Vini — ${dt}</title>
