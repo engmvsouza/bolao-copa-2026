@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -148,20 +149,137 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   .hero-title{font-size:1.8rem}
 }
 </style>
+
+<!-- Firebase bootstrap (Auth + Firestore) -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import {
+    getFirestore, collection, doc, getDoc, getDocs, setDoc,
+    serverTimestamp, writeBatch
+  } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+  "apiKey": "AIzaSyDI7D7XNv6caXOMJAGe1XsHYVR-eKNE4JM",
+  "authDomain": "bolao-copa-2026-b769c.firebaseapp.com",
+  "projectId": "bolao-copa-2026-b769c",
+  "storageBucket": "bolao-copa-2026-b769c.firebasestorage.app",
+  "messagingSenderId": "762920021590",
+  "appId": "1:762920021590:web:6c915f00ac76fbca58d5f7"
+};
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  async function isAdmin(uid){
+    const snap = await getDoc(doc(db,'admins',uid));
+    return snap.exists();
+  }
+
+  async function fbFetchAll(){
+    const cfgSnap = await getDoc(doc(db,'config','main'));
+    const config = cfgSnap.exists()?cfgSnap.data():{exactScore:10,onlyWinner:5,topScorer:15,champion:15,runnerUp:15,third:15,lockBefore:60};
+
+    const metaSnap = await getDoc(doc(db,'meta','main'));
+    const meta = metaSnap.exists()?metaSnap.data():{knockoutGames:[],finalTopScorer:'',finalChampion:'',finalRunnerUp:'',finalThird:''};
+
+    const playersSnap = await getDocs(collection(db,'players'));
+    const players = [];
+    playersSnap.forEach(d=>{ players.push({...d.data(), id:d.id}); });
+
+    const resultsSnap = await getDocs(collection(db,'results'));
+    const results = {};
+    resultsSnap.forEach(d=>{ results[d.id] = d.data(); });
+
+    const picks = {};
+    await Promise.all(players.map(async p=>{
+      const gamesSnap = await getDocs(collection(db,'picks',p.id,'games'));
+      const mp = {};
+      gamesSnap.forEach(g=>{ mp[g.id] = g.data(); });
+      picks[p.id] = mp;
+    }));
+
+    return {
+      players,
+      picks,
+      results,
+      knockoutGames: meta.knockoutGames || [],
+      config,
+      finalTopScorer: meta.finalTopScorer || '',
+      finalChampion: meta.finalChampion || '',
+      finalRunnerUp: meta.finalRunnerUp || '',
+      finalThird: meta.finalThird || ''
+    };
+  }
+
+  async function fbSavePlayerPicks(uid, picksObj){
+    const batch = writeBatch(db);
+    const col = collection(db,'picks',uid,'games');
+    Object.entries(picksObj||{}).forEach(([gid,val])=>{
+      batch.set(doc(col, String(gid)), {
+        home: String(val?.home ?? ''),
+        away: String(val?.away ?? ''),
+        updatedAt: serverTimestamp()
+      }, { merge:true });
+    });
+    await batch.commit();
+  }
+
+  async function fbSaveAdmin(state){
+    if(state.config && Object.keys(state.config).length){
+      await setDoc(doc(db,'config','main'), state.config, {merge:true});
+    }
+    await setDoc(doc(db,'meta','main'), {
+      knockoutGames: state.knockoutGames || [],
+      finalTopScorer: state.finalTopScorer || '',
+      finalChampion: state.finalChampion || '',
+      finalRunnerUp: state.finalRunnerUp || '',
+      finalThird: state.finalThird || ''
+    }, {merge:true});
+
+    const rb = writeBatch(db);
+    const resCol = collection(db,'results');
+    Object.entries(state.results||{}).forEach(([gid,val])=>{
+      rb.set(doc(resCol, String(gid)), {
+        home: String(val?.home ?? ''),
+        away: String(val?.away ?? ''),
+        updatedAt: serverTimestamp()
+      }, {merge:true});
+    });
+    await rb.commit();
+
+    const pb = writeBatch(db);
+    (state.players||[]).forEach(p=>{
+      pb.set(doc(db,'players',p.id), {
+        name: p.name || '',
+        username: p.username || '',
+        email: p.email || '',
+        paymentPending: !!p.paymentPending,
+        bonusPicks: p.bonusPicks || {},
+        topScorer: p.topScorer || ''
+      }, {merge:true});
+    });
+    await pb.commit();
+  }
+
+  async function fbLogin(username, password){
+    const email = `${username.trim().toLowerCase()}@bolao.local`;
+    return signInWithEmailAndPassword(auth, email, password);
+  }
+
+  window.__fb = { auth, db, fbFetchAll, fbSavePlayerPicks, fbSaveAdmin, fbLogin, onAuthStateChanged, signOut, isAdmin };
+</script>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 // ═══════════════════════════════════
-// CONFIGURAÇÕES FIXAS - BOLÃO DO VINI
+// CONFIGURAÇÕES (Firebase)
 // ═══════════════════════════════════
-const GITHUB_OWNER = 'engmvsouza';
-const GITHUB_REPO  = 'bolao-copa-2026';
-const DATA_PATH     = 'data/state.json';
-const SUSPEITA_PATH = 'data/suspeita.json';
-const GITHUB_TOKEN = '';
-const ADMIN_USER   = 'admin';
-const ADMIN_PASS   = 'H7taj2kd*';
+// O app usa Firebase Auth + Firestore.
+// Convite e acesso só para amigos (coleção invites).
+// Admin é definido por documento em admins/{uid}.
+
 // ═══════════════════════════════════
 
 // ── ENCODING UTF-8 SEGURO ──────────────────────────────
@@ -402,197 +520,8 @@ function isLocked(game,lockMin){
 
 function genId(){return Math.random().toString(36).slice(2,9).toUpperCase()}
 
-// ── GITHUB API ───────────────────────────────────
-let _sha='';
-
-async function ghFetch(){
-  const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}?ref=main&t=${Date.now()}`;
-  const res=await fetch(url,{headers:{'Accept':'application/vnd.github+json',"X-GitHub-Api-Version": "2022-11-28"
-,'Authorization':`Bearer ${GITHUB_TOKEN}`}});
-  if(!res.ok)throw new Error(`GitHub ${res.status}`);
-  const json=await res.json();
-  _sha=json.sha;
-  // CORREÇÃO: usa fromBase64 com suporte a UTF-8
-  return JSON.parse(fromBase64(json.content.replace(/\n/g,'')));
-}
-
-async function logSuspeita(entry){
-  try{
-    // Fetch current suspeita.json
-    const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUSPEITA_PATH}?t=${Date.now()}`;
-    const res=await fetch(url,{headers:{'Accept':'application/vnd.github+json',"X-GitHub-Api-Version": "2022-11-28"
-,'Authorization':`Bearer ${GITHUB_TOKEN}`}});
-    let lista=[],sha='';
-    if(res.ok){
-      const json=await res.json();
-      sha=json.sha;
-      try{lista=JSON.parse(fromBase64(json.content.replace(/\n/g,'')));}catch(e){}
-    }
-    lista.unshift(entry);
-    if(lista.length>200)lista.splice(200);
-    const putUrl=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUSPEITA_PATH}`;
-    const body={message:'⚠️ alteracao suspeita detectada',content:toBase64(JSON.stringify(lista,null,2)),branch:'main'};
-    if(sha)body.sha=sha;
-    await fetch(putUrl,{method:'PUT',headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-  }catch(e){console.warn('suspeita log failed:',e);}
-}
-
-async function getServerTimeBrasilia(){
-  const res=await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`,{
-    headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Accept':'application/vnd.github+json',"X-GitHub-Api-Version": "2022-11-28"}
-  });
-  const dateHeader=res.headers.get('Date');
-  if(!dateHeader)return Date.now();
-  return new Date(dateHeader).getTime();
-}
-
-function isLockedByServerTime(game,lockMin,serverNowMs){
-  if(!game.date||!game.time)return false;
-  const dt=new Date(`${game.date}T${game.time}:00-03:00`);
-  return serverNowMs>=(dt.getTime()-lockMin*60000);
-}
-
-// ── MERGE SEGURO COM RETRY ─────────────────────────────────────────
-// CORREÇÃO PRINCIPAL: em vez de salvar o state inteiro do navegador,
-// sempre buscamos o estado mais recente do GitHub, aplicamos APENAS
-// a mudança deste jogador/admin, e salvamos. Se houver conflito de SHA
-// (duas pessoas salvando ao mesmo tempo), aguardamos e tentamos de novo.
-async function safeMergeSave(updateFn, retries=4){
-  for(let i=0; i<retries; i++){
-    try{
-      const fresh = await ghFetch(); // busca estado atual + SHA atual
-      updateFn(fresh);               // aplica apenas a mudança necessária
-      const url=`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_PATH}`;
-      const body={
-        message:'bolão: update',
-        // CORREÇÃO: usa toBase64 com suporte a UTF-8
-        content: toBase64(JSON.stringify(fresh,null,2)),
-        sha:_sha,
-        branch:'main'
-      };
-      const res=await fetch(url,{method:'PUT',headers:{'Authorization':`Bearer ${GITHUB_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(!res.ok){
-        const e=await res.json();
-        // Conflito de SHA = outra pessoa salvou antes de nós
-        if(res.status===409||(e.message&&e.message.includes('sha'))){
-          await new Promise(r=>setTimeout(r,700*(i+1)));
-          continue; // tenta de novo com SHA novo
-        }
-        throw new Error(e.message||res.status);
-      }
-      const json=await res.json();
-      _sha=json.content.sha;
-      return true;
-    }catch(err){
-      if(i===retries-1)throw err;
-      await new Promise(r=>setTimeout(r,700*(i+1)));
-    }
-  }
-}
-
-async function ghSave(data, picksPlayerId, allGames, lockMin, isAdmin=false){
-  if(isAdmin){
-    // Detectar alterações suspeitas: resultado alterado após horário do jogo
-    const serverNowCheck=await getServerTimeBrasilia();
-    const allGamesCheck=[...GROUP_GAMES,...(data.knockoutGames||[])];
-    const freshCheck=await ghFetch();
-    allGamesCheck.forEach(g=>{
-      const oldRes=freshCheck.results?.[g.id];
-      const newRes=data.results?.[g.id];
-      if(!oldRes||!newRes)return;
-      // Só suspeito se o jogo já terminou (passou da hora do jogo)
-      if(!g.date||!g.time)return;
-      const gameEnd=new Date(`${g.date}T${g.time}:00-03:00`).getTime()+120*60000; // +2h após início
-      if(serverNowCheck<gameEnd)return;
-      // Verificar se resultado mudou
-      const oldH=String(oldRes.home||'').trim();
-      const oldA=String(oldRes.away||'').trim();
-      const newH=String(newRes.home||'').trim();
-      const newA=String(newRes.away||'').trim();
-      const hadResult=oldH!==''&&!isNaN(parseInt(oldH));
-      const hasResult=newH!==''&&!isNaN(parseInt(newH));
-      if(hadResult&&hasResult&&(oldH!==newH||oldA!==newA)){
-        const now=new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'});
-        logSuspeita({
-          timestamp:new Date().toISOString(),
-          horario:now,
-          jogo:`#${g.id} ${g.home} × ${g.away}`,
-          data:`${g.date} ${g.time}`,
-          resultadoAnterior:`${oldH}×${oldA}`,
-          resultadoNovo:`${newH}×${newA}`,
-          aviso:'Resultado alterado após término do jogo',
-        });
-      }
-    });
-    // Admin: merge seguro — NUNCA sobrescreve picks dos jogadores
-    // Admin só pode alterar: results, knockoutGames, config, players (cadastro), finais
-    // Picks de cada jogador são PRESERVADOS do servidor — admin não mexe neles
-    await safeMergeSave(fresh=>{
-      fresh.results       = data.results;
-      fresh.knockoutGames = data.knockoutGames;
-      fresh.config        = data.config;
-      fresh.finalTopScorer= data.finalTopScorer;
-      fresh.finalChampion = data.finalChampion;
-      fresh.finalRunnerUp = data.finalRunnerUp;
-      fresh.finalThird    = data.finalThird;
-      // Players: merge seguro — preserva picks e dados que o jogador pode ter atualizado
-      // Só atualiza campos que o admin gerencia (nome, username, email, password)
-      // Nunca sobrescreve bonusPicks ou topScorer que o jogador preencheu
-      data.players.forEach(adminPlayer=>{
-        const idx=fresh.players.findIndex(p=>p.id===adminPlayer.id);
-        if(idx>=0){
-          // Preserva bonusPicks e topScorer do servidor (o jogador pode ter atualizado)
-          fresh.players[idx]={
-            ...fresh.players[idx],          // mantém tudo do servidor
-            name:adminPlayer.name,          // admin pode editar nome
-            username:adminPlayer.username,  // admin pode editar usuário
-            email:adminPlayer.email,        // admin pode editar email
-            password:adminPlayer.password,  // admin pode editar senha
-          };
-        } else {
-          // Jogador novo adicionado pelo admin
-          fresh.players.push(adminPlayer);
-        }
-      });
-      // Remove jogadores que o admin removeu
-      fresh.players=fresh.players.filter(fp=>data.players.some(ap=>ap.id===fp.id));
-    });
-    return;
-  }
-
-  if(picksPlayerId){
-    // Jogador: merge SOMENTE dos dados deste jogador no estado mais recente
-    const serverNow = await getServerTimeBrasilia();
-    const playerData = data.players.find(p=>p.id===picksPlayerId);
-    const playerPicks = (data.picks||{})[picksPlayerId]||{};
-
-    await safeMergeSave(fresh=>{
-      // Picks: aplica apenas os picks deste jogador, respeitando lock
-      const serverPicks = (fresh.picks||{})[picksPlayerId]||{};
-      const sanitized = {...playerPicks};
-      if(allGames && lockMin!==undefined){
-        allGames.forEach(g=>{
-          if(isLockedByServerTime(g,lockMin,serverNow)){
-            if(serverPicks[g.id]===undefined) delete sanitized[g.id];
-            else sanitized[g.id]=serverPicks[g.id];
-          }
-        });
-      }
-      if(!fresh.picks) fresh.picks={};
-      fresh.picks[picksPlayerId] = sanitized;
-
-      // Dados pessoais: bonusPicks, topScorer
-      if(playerData){
-        const idx = fresh.players.findIndex(p=>p.id===picksPlayerId);
-        if(idx>=0){
-          fresh.players[idx].bonusPicks = playerData.bonusPicks||{};
-          fresh.players[idx].topScorer  = playerData.topScorer||'';
-        }
-      }
-    });
-  }
-}
-// ──────────────────────────────────────────────────────────────────
+// ── DATA (Firebase Firestore) ───────────────────────────────────
+// Funções em window.__fb (bootstrap no <head>).
 
 // ── COMPONENTES BASE ─────────────────────────────
 function SavingBar({status}){
@@ -2078,16 +2007,8 @@ function AdminView({state,setState,onSave,saving}){
   const[newPass,setNewPass]=useState('');
   const baseUrl=window.location.origin+window.location.pathname;
 
-  function addPlayer(){
-    if(!newName.trim()||!newUsername.trim()||!newPass.trim())return alert('Preencha nome, usuário e senha!');
-    const id=genId();
-    setState(s=>({...s,players:[...s.players,{id,name:newName.trim(),username:newUsername.trim().toLowerCase(),email:newEmail.trim(),password:newPass.trim(),bonusPicks:{},topScorer:''}]}));
-    setNewName('');setNewUsername('');setNewEmail('');setNewPass('');
-  }
-  function removePlayer(id){
-    if(!confirm('Remover participante?'))return;
-    setState(s=>({...s,players:s.players.filter(p=>p.id!==id)}));
-  }
+  function addPlayer(){ alert('Participantes entram pelo cadastro com convite.'); }
+  function removePlayer(id){ alert('Para remover, use Firebase Authentication (console).'); }
   function updateResult(gid,side,val){
     setState(s=>({...s,results:{...s.results,[gid]:{...(s.results?.[gid]||{}),[side]:val}}}));
   }
@@ -2220,7 +2141,7 @@ tr:nth-child(even) td{background:#0d1220}
       {tab==='players'&&(
         <div>
           <div className="card" style={{marginBottom:'1rem'}}>
-            <h2 style={{marginBottom:'1rem'}}>Adicionar Participante</h2>
+            <h2 style={{marginBottom:'1rem'}}>Participantes (somente leitura)</h2>
             <div className="flex gap-md" style={{flexWrap:'wrap'}}>
               <input placeholder="Nome completo" value={newName} onChange={e=>setNewName(e.target.value)} style={{flex:1,minWidth:120}}/>
               <input placeholder="Usuário" value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase())} style={{flex:1,minWidth:100}}/>
@@ -2395,26 +2316,22 @@ tr:nth-child(even) td{background:#0d1220}
   );
 }
 
-function LoginView({state,onLoginPlayer,onLoginAdmin}){
-  const[user,setUser]=useState('');
-  const[pass,setPass]=useState('');
-  const[err,setErr]=useState('');
-  const[mode,setMode]=useState('player');
 
-  function doLogin(){
+function LoginView({state}){
+  const [user,setUser]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+
+  async function doLogin(){
     setErr('');
-    if(mode==='admin'){
-      if(user===ADMIN_USER&&pass===ADMIN_PASS){onLoginAdmin();return;}
-      setErr('Usuário ou senha incorretos.');return;
-    }
     const u=user.trim().toLowerCase();
-    const found=state.players.find(x=>(
-      (x.username&&x.username.toLowerCase()===u)||
-      (x.email&&x.email.toLowerCase()===u)||
-      (x.name&&x.name.toLowerCase()===u)
-    )&&x.password===pass);
-    if(found){onLoginPlayer(found.id);return;}
-    setErr('Usuário, e-mail ou nome incorretos.');
+    if(!u || !pass){ setErr('Informe usuário e senha.'); return; }
+    try{
+      await window.__fb.fbLogin(u, pass);
+      // onAuthStateChanged no App assume a sessão
+    }catch(e){
+      setErr('Usuário ou senha incorretos.');
+    }
   }
 
   return(
@@ -2422,14 +2339,11 @@ function LoginView({state,onLoginPlayer,onLoginAdmin}){
       <div className="login-card">
         <div className="login-logo">Bolão do Vini</div>
         <div className="login-sub">Copa do Mundo 2026 ⚽</div>
-        <div className="tab" style={{marginBottom:'1.25rem'}}>
-          <button className={`tab-btn ${mode==='player'?'active':''}`} style={{flex:1}} onClick={()=>{setMode('player');setErr('')}}>Jogador</button>
-          <button className={`tab-btn ${mode==='admin'?'active':''}`} style={{flex:1}} onClick={()=>{setMode('admin');setErr('')}}>Admin</button>
-        </div>
+
         <div className="flex-col gap-md">
           <div>
             <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>Usuário</label>
-            <input value={user} onChange={e=>setUser(e.target.value)} placeholder={mode==='admin'?'admin':'Usuário, e-mail ou nome'} onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+            <input value={user} onChange={e=>setUser(e.target.value)} placeholder="username (ex: joaosilva)" onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
           </div>
           <div>
             <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>Senha</label>
@@ -2438,14 +2352,13 @@ function LoginView({state,onLoginPlayer,onLoginAdmin}){
           {err&&<div style={{fontSize:12,color:'var(--red)',background:'#ff3d5711',padding:'6px 10px',borderRadius:6}}>{err}</div>}
           <button className="btn btn-primary" onClick={doLogin} style={{width:'100%',marginTop:4}}>Entrar →</button>
         </div>
-        {mode==='player'&&(
-          <p style={{fontSize:11,color:'var(--muted)',marginTop:'1rem',textAlign:'center'}}>
-            Use o usuário e senha definidos no cadastro.<br/>
-            <a href="cadastro.html" style={{color:'var(--yellow)',textDecoration:'none',fontWeight:700,fontSize:12}}>
-              Não tem cadastro? Cadastre-se aqui →
-            </a>
-          </p>
-        )}
+
+        <p style={{fontSize:11,color:'var(--muted)',marginTop:'1rem',textAlign:'center'}}>
+          Só amigos entram com <strong>código de convite</strong> no cadastro.<br/>
+          <a href="cadastro.html" style={{color:'var(--yellow)',textDecoration:'none',fontWeight:700,fontSize:12}}>
+            Não tem cadastro? Cadastre-se aqui →
+          </a>
+        </p>
       </div>
     </div>
   );
@@ -2468,16 +2381,30 @@ function App(){
   const[saving,setSaving]=useState('');
 
   useEffect(()=>{
-    ghFetch().then(data=>{
-      setStateRaw(s=>({...DEFAULT_STATE,...data}));
+  const unsub = window.__fb.onAuthStateChanged(window.__fb.auth, async (user)=>{
+    if(!user){
+      setSession(null);
       setLoading(false);
-    }).catch(e=>{setLoadErr(e.message);setLoading(false)});
-  },[]);
+      return;
+    }
+    setLoading(true);
+    try{
+      const data = await window.__fb.fbFetchAll();
+      setStateRaw(s=>({...DEFAULT_STATE, ...data}));
+      const admin = await window.__fb.isAdmin(user.uid);
+      setSession(admin?{type:'admin', uid:user.uid}:{type:'player', playerId:user.uid, uid:user.uid});
+      setView(admin?'admin':'ranking');
+      setLoadErr('');
+    }catch(e){
+      setLoadErr(e.message||String(e));
+    }
+    setLoading(false);
+  });
+  return ()=>unsub();
+},[]);
 
-  useEffect(()=>{
-    const p=new URLSearchParams(window.location.search).get('player');
-    if(p&&p.length>3)setSession({type:'player',playerId:p.toUpperCase()});
-  },[]);
+  // Sessão vem do Firebase Auth
+
 
   function setState(updater){
     setStateRaw(prev=>typeof updater==='function'?updater(prev):updater);
@@ -2489,7 +2416,17 @@ function App(){
       const toSave={...state};
       const allGames=[...GROUP_GAMES,...(state.knockoutGames||[])];
       const playerId=session?.type==='player'?session.playerId:null;
-      await ghSave(toSave,playerId,allGames,state.config.lockBefore,session?.type==='admin');
+      if(session?.type==='admin'){
+      await window.__fb.fbSaveAdmin(toSave);
+    } else if(session?.type==='player'){
+      const pid=session.playerId;
+      await window.__fb.fbSavePlayerPicks(pid, (toSave.picks||{})[pid]||{});
+      // salva bônus do jogador
+      const me = toSave.players.find(p=>p.id===pid);
+      if(me){
+        await window.__fb.fbSaveAdmin({players:[me], results:{}, config:{}, knockoutGames:[], finalTopScorer:'', finalChampion:'', finalRunnerUp:'', finalThird:''});
+      }
+    }
       setSaving('ok');
     }catch(e){
       setSaving('error');
@@ -2536,7 +2473,7 @@ function App(){
             {navItems.map(n=>(
               <button key={n.id} className={`nav-btn ${view===n.id?'active':''}`} onClick={()=>setView(n.id)}>{n.label}</button>
             ))}
-            <button className="nav-btn" onClick={()=>setSession(null)} style={{color:'var(--red)'}}>Sair</button>
+            <button className="nav-btn" onClick={async ()=>{await window.__fb.signOut(window.__fb.auth); setSession(null);}} style={{color:'var(--red)'}}>Sair</button>
           </nav>
         </div>
       </header>
