@@ -222,7 +222,7 @@ async function doCadastro(){
 }
 
 function copyPix(){
-  navigator.clipboard.writeText(PIX_KEY).then(()=>{
+  navigator.clipboard.writeText(BIZUM_KEY).then(()=>{
     const msg=document.getElementById('copiedMsg');
     msg.textContent='✓ Chave copiada!';
     setTimeout(()=>{msg.textContent=''},3000);
